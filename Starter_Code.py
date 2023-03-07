@@ -10,7 +10,25 @@ import math
 import typing
 
 from typing import Dict, List
-from datamodel import OrderDepth, TradingState, Order
+from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol
+
+def makeProductSymbolDict(listings: Dict[Symbol, Listing]) -> Dict[Product, Symbol]:
+    """
+    Converts the symbol -> listing dictionary into a product -> symbol dictionary
+    
+    Parameters:
+    listings (Dict[Symbol, Listing]): The dictionary of symbols to listings
+    
+    Returns:
+    Dict[Product, Symbol]: The dictionary of products to symbols
+    """
+    products = {}
+    
+    for symbol in listings:
+        product = listings[symbol]['product'] # Wiki is incorrect: Listing is a dict, not a class
+        products[product] = symbol
+        
+    return products
 
 class Trader:
 
