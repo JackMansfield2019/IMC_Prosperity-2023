@@ -156,7 +156,7 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
 
 class Trader:
 
-    def run(self, state: TradingState) -> Dict[str, List[Order]]:
+    def run(self, state: TradingState) -> Dict[Product, List[Order]]:
         """
         Takes all buy and sell orders for all symbols as an input,
         and outputs a list of orders to be sent
