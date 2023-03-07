@@ -30,6 +30,30 @@ def makeProductSymbolDict(listings: Dict[Symbol, Listing]) -> Dict[Product, Symb
         
     return products
 
+def getBuySellVol(order_depth: OrderDepth, buy: bool) -> int:
+    """
+    Computes the total volume of either buy or sell orders from the given OrderDepth
+    
+    Parameters:
+    order_depth (OrderDepth): The order depth to compute the volume from.
+    buy (bool): Whether to compute the volume of buy orders or sell orders. True for buy, False for sell.
+    
+    Returns:
+    int: The total volume of either buy or sell orders. Always positive.
+    """
+    
+    total: int = 0
+
+    if buy:
+        for buy_order in order_depth.buy_orders:
+            total += order_depth.buy_orders[buy_order]
+    else:
+        # Note the negation for sell orders, as they are negative in the order depth
+        for sell_order in order_depth.sell_orders:
+            total += -order_depth.sell_orders[sell_order]
+
+    return total
+
 class Trader:
 
     def run(self, state: TradingState) -> Dict[str, List[Order]]:
