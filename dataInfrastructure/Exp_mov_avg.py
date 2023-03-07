@@ -16,6 +16,17 @@ plot the original
 '''
 with open('BANANAS.txt', 'r') as f:
     lines = f.readlines()
+
+#histogram
+vals = []
+for line in lines:
+    line = line.split(" ")
+    vals.append(float(line[1]))
+
+plt.hist(vals)
+plt.show()
+
+
 size = len(lines)
 time = np.full((size,), 0)
 quote = np.full((size,), 0)
