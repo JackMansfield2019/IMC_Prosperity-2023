@@ -16,6 +16,13 @@ from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol
 products: Dict[Product, Symbol]
 symbols: Dict[Symbol, Product]
 
+# Must be hard-coded, not accessible via TradingState. IMC will publish this
+# information before each round, update here accordingly.
+limits: Dict[Symbol, int] = {
+    'PEARLS': 20,
+    'BANANAS': 20,
+}
+
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
     Converts the symbol -> listing dictionary into product -> symbol and symbol -> product dictionaries,
