@@ -12,23 +12,27 @@ import typing
 from typing import Dict, List
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol
 
-def makeProductSymbolDict(listings: Dict[Symbol, Listing]) -> Dict[Product, Symbol]:
+# Dictionaries for converting between products and symbols
+products: Dict[Product, Symbol]
+symbols: Dict[Symbol, Product]
+
+def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
-    Converts the symbol -> listing dictionary into a product -> symbol dictionary
+    Converts the symbol -> listing dictionary into product -> symbol and symbol -> product dictionaries,
+    stored as global variables.
     
     Parameters:
     listings (Dict[Symbol, Listing]): The dictionary of symbols to listings
-    
-    Returns:
-    Dict[Product, Symbol]: The dictionary of products to symbols
     """
+    global products
+    global symbols
     products = {}
+    symbols = {}
     
     for symbol in listings:
         product = listings[symbol]['product'] # Wiki is incorrect: Listing is a dict, not a class
         products[product] = symbol
-        
-    return products
+        symbols[symbol] = product
 
 def getBuySellVol(order_depth: OrderDepth, buy: bool) -> int:
     """
@@ -161,5 +165,10 @@ class Trader:
         Takes all buy and sell orders for all symbols as an input,
         and outputs a list of orders to be sent
         """
+        
+        # Create product/symbol dictionaries for later reference
+        makeProductSymbolDicts(state.listings)
+        global products
+        global symbols
         result = {}
         return result
