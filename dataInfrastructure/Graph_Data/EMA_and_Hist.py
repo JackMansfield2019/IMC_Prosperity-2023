@@ -71,6 +71,7 @@ for prod in products:
     my_file = 'Hist' + prod + '.pdf'
     plt.savefig(os.path.join(my_path, my_file))
     plt.show()
+    plt.clf()
 
     size = len(vals)
     time = np.full((size,), 0)
@@ -129,3 +130,4 @@ for prod in products:
     my_file = 'Exp_Mov_Avg' + prod + '.pdf'
     plt.savefig(os.path.join(my_path, my_file))
     plt.show()
+    plt.clf()
