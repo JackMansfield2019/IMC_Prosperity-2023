@@ -16,7 +16,7 @@ except:
     print("Path Already exists")
 
 
-with open('Data_test2.csv', 'r') as csv_file:
+with open('data_test2.csv', 'r') as csv_file:
     reader = csv.reader(csv_file)
 
     lines = []
@@ -51,8 +51,21 @@ for row in rows:
 
 # EDIT THIS LINE FOR PRODUCT DATA (i.e. products['BANANAS'] gets BANANA data)
 vals = products[prod]
+Set_of_Prices = set(vals)
+Max_bound = max(Set_of_Prices)
+Min_bound = min(Set_of_Prices)
 
-plt.hist(vals)
+# If Banana Bucket size is 1, Pearl is .50
+
+print(Max_bound, Min_bound)
+# plt.hist(vals, bins=np.arange(Min_bound - 0.5, Max_bound+1.0, 0.5))
+if prod == 'PEARLS':
+    Bin_size = 0.5
+else:
+    Bin_size = 1.0
+
+plt.hist(vals, bins=np.arange(Min_bound - Bin_size,
+         Max_bound + 2 * Bin_size, Bin_size))
 my_path = os.path.abspath(__file__)
 my_path = my_path.replace('EMA_and_Hist.py', '')
 my_path = my_path + sub_dir
