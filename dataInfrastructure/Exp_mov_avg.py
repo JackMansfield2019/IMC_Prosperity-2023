@@ -14,17 +14,9 @@ open ibm data
 '''
 plot the original 
 '''
-with open('BANANAS.txt', 'r') as f:
+file_name = 'PEARLS.txt'
+with open(file_name, 'r') as f:
     lines = f.readlines()
-
-#histogram
-vals = []
-for line in lines:
-    line = line.split(" ")
-    vals.append(float(line[1]))
-
-plt.hist(vals)
-plt.show()
 
 
 size = len(lines)
@@ -82,7 +74,7 @@ plt.plot( x, MV3, label = "1/1920")
 plt.title("Exponential Moving averages vs price")
 plt.ylabel('Exponential moving average')
 plt.xlabel('Time (minutes)')
-plt.savefig("hw2.pdf")
+plt.savefig(file_name[:-4] + '_Exp_Mov_Avg.pdf')
 plt.show()
 
 
