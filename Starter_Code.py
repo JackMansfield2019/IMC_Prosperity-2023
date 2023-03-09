@@ -208,6 +208,36 @@ def maxNewPosition(position: Dict[Product, Position], new_orders: Dict[Product, 
     else:
         return min(-limits[symbol] - current_position - new_position, 0)
 
+def addLimitOrder(new_orders: Dict[Product, List[Order]], position: Dict[Product, Position],
+    symbol: Symbol, buy: bool, quantity: int, price: int) -> None:
+    """
+    Places a limit order at the given price and quantity. Checks the current positions and orders to ensure that the
+    quantity does not exceed the maximum position limit.
+    
+    Parameters:
+    new_orders (Dict[Product, List[Order]]): The orders that will be executed at the end of the current time step. This
+    function will add a new order to this dictionary.
+    position (Dict[Product, Position]): The current positions.
+    symbol (Symbol): The symbol to place the order for.
+    buy (bool): Whether the order is a buy or sell order. True for buy, False for sell.
+    quantity (int): The quantity of the order.
+    price (int): The price of the order.    
+    """
+    global symbols
+    product = symbols[symbol]
+    
+    max_new = maxNewPosition(position, new_orders, symbol, buy)
+    
+    if buy and quantity > max_new:
+        quantity = max_new
+    elif not buy and quantity > -max_new:
+        quantity = max_new
+    
+    if quantity != 0:
+        if product not in new_orders:
+            new_orders[product] = []
+        
+        new_orders[product].append(Order(symbol, price, quantity))
 
 
 class Trader:
