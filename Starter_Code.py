@@ -239,6 +239,83 @@ def addLimitOrder(new_orders: Dict[Product, List[Order]], position: Dict[Product
         
         new_orders[product].append(Order(symbol, price, quantity))
 
+def addMarketOrders(new_orders: Dict[Product, List[Order]], position: Dict[Product, Position], symbol: Symbol, buy: bool,
+    quantity: int, order_depths_after_mkt_orders: Dict[Symbol, OrderDepth]) -> None:
+    """
+    Places a market order for the given quantity. Checks the current positions and orders to ensure that the
+    quantity does not exceed the maximum position limit. Fills orders at the market price until either the quantity we 
+    want to fill is filled, or there are no more orders to fill. removes the filled orders from our created order depth.
+
+    Parameters:
+    new_orders (Dict[Product, List[Order]]): The orders that will be executed at the end of the current time step. This
+    function will add new orders to this dictionary.
+    position (Dict[Product, Position]): The current positions.
+    symbol (Symbol): The symbol to place the order for.
+    buy (bool): Whether the order is a buy or sell order. True for buy, False for sell.
+    quantity (int): The quantity of the order.
+    order_depths_after_mkt_orders (Dict[Symbol, OrderDepth]): Our order depths dict that we will remove from as we fill 
+    market orders, preserving the state of the actual order_depths for this time step.
+
+    Returns:
+    None
+    """
+    global symbols
+    product = symbols[symbol]
+
+    max_new = maxNewPosition(position, new_orders, symbol, buy)
+
+    if buy and quantity > max_new:
+        quantity = max_new
+    elif not buy and quantity > -max_new:
+        quantity = max_new
+
+    # make sure the order depth is sorted
+    sortOrderDepth(order_depths_after_mkt_orders[symbol])
+
+    # we will go through the lowest sell orders for a buy, and the highest buy orders for a sell
+    orders = None
+    if buy:
+        orders = order_depths_after_mkt_orders[symbol].sell_orders
+    else:
+        orders = order_depths_after_mkt_orders[symbol].buy_orders
+
+    volume_filled = 0
+    remaining_quantity = 0
+    if quantity != 0:
+        if product not in new_orders:
+            new_orders[product] = []
+        
+        for price in orders:
+
+            volume_filled += orders[price]
+
+            # Note: if there aren't enough orders to fill the quantity, we will fill as many as we can
+            if volume_filled >= quantity:
+                remaining_quantity = quantity - (volume_filled - orders[price])
+
+                new_orders[product].append(Order(symbol, price, remaining_quantity))
+
+                if remaining_quantity == orders[price]: # if the final order to be placed is the same size as the 
+                    # matching order in the order book, we can just delete the order from the order book, otherwise, 
+                    # we remove (from that order) the remaining quantity we need to fill
+                    if buy:
+                        del order_depths_after_mkt_orders[symbol].sell_orders[price]
+                    else:
+                        del order_depths_after_mkt_orders[symbol].buy_orders[price]
+                else:
+                    if buy:
+                        order_depths_after_mkt_orders[symbol].sell_orders[price] -= remaining_quantity
+                    else:
+                        order_depths_after_mkt_orders[symbol].buy_orders[price] -= remaining_quantity
+                break
+            else: # delete orders from our order book as we fill them
+
+                new_orders[product].append(Order(symbol, price, orders[price]))
+
+                if buy:
+                    del order_depths_after_mkt_orders[symbol].sell_orders[price]
+                else:
+                    del order_depths_after_mkt_orders[symbol].buy_orders[price]
 
 class Trader:
 
@@ -252,5 +329,9 @@ class Trader:
         makeProductSymbolDicts(state.listings)
         global products
         global symbols
+        order_depths_after_mkt_orders = state.order_depths 
+        # ^ pass this to addMarketOrders, so that we can delete from it as we make multiple market orders in one time 
+        # step while preserving the order depths in case we need to look at things such as highest bid and lowest ask
+        
         result = {}
         return result
