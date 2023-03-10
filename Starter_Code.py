@@ -228,10 +228,10 @@ def addLimitOrder(new_orders: Dict[Product, List[Order]], position: Dict[Product
     
     max_new = maxNewPosition(position, new_orders, symbol, buy)
     
-    if buy and quantity > max_new:
-        quantity = max_new
-    elif not buy and quantity > -max_new:
-        quantity = max_new
+    if buy:
+        quantity = min(abs(quantity), abs(max_new))
+    else:
+        quantity = -min(abs(quantity), abs(max_new))
     
     if quantity != 0:
         if product not in new_orders:
