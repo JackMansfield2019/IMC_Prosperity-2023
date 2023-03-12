@@ -180,6 +180,7 @@ class Strategy:
         global symbols
         self.product = symbols[symbol] if symbol in symbols else symbol
         self.strategy = strategy
+        self.data: Dict[Any, Any] = {} # A dictionary of data that persists across time steps
 
     def run(self, state: TradingState) -> List[Order]:
         """
