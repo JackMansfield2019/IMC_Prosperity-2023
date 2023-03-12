@@ -334,9 +334,6 @@ class Trader:
         makeProductSymbolDicts(state.listings)
         global products
         global symbols
-        order_depths_after_mkt_orders = state.order_depths 
-        # ^ pass this to addMarketOrders, so that we can delete from it as we make multiple market orders in one time 
-        # step while preserving the order depths in case we need to look at things such as highest bid and lowest ask
         
         result = {}
         return result
