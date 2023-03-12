@@ -333,6 +333,17 @@ class Strategy:
         self.product = symbols[symbol] if symbol in symbols else symbol
         self.strategy = strategy
 
+    def run(self, state: TradingState) -> List[Order]:
+        """
+        Run this strategy for the given TradingState. This function will return a list of orders to be executed
+        for this strategy's symbol at the end of the time step.
+        """
+        self.my_orders: List[Order] = []
+        self.order_depth_after_mkt_orders = state.order_depths[self.symbol] if \
+            self.symbol in state.order_depths else OrderDepth()
+        self.strategy(self, state)
+        return self.my_orders
+
 class Trader:
 
     def run(self, state: TradingState) -> Dict[Product, List[Order]]:
