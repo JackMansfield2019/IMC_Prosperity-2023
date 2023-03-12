@@ -13,8 +13,8 @@ from typing import Dict, List, Callable, Any
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
 
 # Dictionaries for converting between products and symbols
-products: Dict[Product, Symbol]
-symbols: Dict[Symbol, Product]
+products: Dict[Product, Symbol] = {}
+symbols: Dict[Symbol, Product] = {}
 
 # Must be hard-coded, not accessible via TradingState. IMC will publish this
 # information before each round, update here accordingly.
