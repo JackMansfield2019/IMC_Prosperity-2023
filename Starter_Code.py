@@ -322,6 +322,9 @@ class Strategy:
 
         return new_orders
 
+# Strategies to run
+strategies: List[Strategy] = []
+
 class Trader:
 
     def run(self, state: TradingState) -> Dict[Product, List[Order]]:
@@ -336,4 +339,9 @@ class Trader:
         global symbols
         
         result = {}
+        
+        global strategies
+        for strategy in strategies:
+            result[strategy.product] = strategy.run(state)
+        
         return result
