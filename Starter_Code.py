@@ -164,49 +164,6 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     print("Sell Orders:")
     for price in order_depth.sell_orders:
         print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
-        
-def maxNewPosition(position: Dict[Product, Position], new_orders: Dict[Product, List[Order]],
-    symbol: Symbol, buy: bool) -> int:
-    """
-    Computes the maximum quantity of a new position that can be opened for a given symbol in the
-    given direction, considering position limits, the current position, and the orders to be
-    executed by this strategy at the end of the time step.
-    
-    Parameters:
-    position (Dict[Product, Position]): The current positions.
-    new_orders (Dict[Product, List[Order]]): The orders that will be executed at the end of the current time step.
-    symbol (Symbol): The symbol to compute the maximum position for.
-    buy (bool): Whether the position is a buy or sell position. True for buy, False for sell.
-    
-    Returns:
-    (int): The maximum quantity of a new position that can be opened for the given symbol, in the given direction.
-    This number will be positive if buy is True, and negative if buy is False, unless the current position is already
-    over the limit, in which case it will be negative if buy is True and positive if buy is False.
-    """
-    global limits
-    global symbols
-    
-    # Instead of crashing when a symbol is not in limits or symbols, return a very large/small number
-    if symbol not in limits or symbol not in symbols:
-        return pow(10, 5) if buy else -pow(10, 5)
-    
-    product = symbols[symbol]
-    
-    # If there is no current position, assume it is 0
-    current_position = 0
-    if product in position:
-        current_position = position[product]
-    
-    # If there are no new orders, assume the new position will be 0
-    new_position = 0
-    if product in new_orders:
-        new_position = sum([order.quantity for order in new_orders[product]])
-    
-    # If the current position is already over the limit, return 0
-    if buy:
-        return max(limits[symbol] - current_position - new_position, 0)
-    else:
-        return min(-limits[symbol] - current_position - new_position, 0)
 
 def addLimitOrder(new_orders: Dict[Product, List[Order]], position: Dict[Product, Position],
     symbol: Symbol, buy: bool, quantity: int, price: int) -> None:
@@ -343,6 +300,31 @@ class Strategy:
             self.symbol in state.order_depths else OrderDepth()
         self.strategy(self, state)
         return self.my_orders
+
+    def maxNewPosition(self, current_position: Position, buy: bool) -> int:
+        """
+        Computes the maximum quantity of a new position that can be opened for this strategy's symbol in the
+        given direction, considering position limits, the current position, and the orders to be executed by
+        this strategy at the end of the time step.
+        
+        Parameters:
+        current_position (Position): The current position for this strategy's symbol.
+        buy (bool): Whether the position is a buy or sell position. True for buy, False for sell.
+        
+        Returns:
+        (int): The maximum quantity of a new position that can be opened in the given direction. This number will be
+        positive if buy is True, and negative if buy is False, unless the current position is already over the limit,
+        in which case it will be 0.
+        """
+        
+        # Calculate the new position that will be opened by the orders to be executed by this strategy
+        new_position = sum([order.quantity for order in self.my_orders])
+        
+        # If the current position is already over the limit, return 0
+        if buy:
+            return max(limits[self.symbol] - current_position - new_position, 0)
+        else:
+            return min(-limits[self.symbol] - current_position - new_position, 0)
 
 class Trader:
 
