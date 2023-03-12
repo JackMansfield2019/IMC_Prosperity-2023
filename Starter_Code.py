@@ -9,7 +9,7 @@ import statistics
 import math
 import typing
 
-from typing import Dict, List
+from typing import Dict, List, Callable, Any
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
 
 # Dictionaries for converting between products and symbols
@@ -316,6 +316,22 @@ def addMarketOrders(new_orders: Dict[Product, List[Order]], position: Dict[Produ
                     del order_depths_after_mkt_orders[symbol].sell_orders[price]
                 else:
                     del order_depths_after_mkt_orders[symbol].buy_orders[price]
+
+class Strategy:
+    """
+    A simple trading strategy class that makes it easier to write strategies and especially to track
+    any associated data that should persist data across time steps.
+    """
+    
+    def __init__(self, symbol: Symbol, pos_limit: Position, strategy: Callable[[Any, TradingState], None]):
+        """
+        Create a new strategy. The run function should take this Strategy instance, and a TradingState.
+        """
+        self.symbol = symbol
+        self.pos_limit = pos_limit
+        global symbols
+        self.product = symbols[symbol] if symbol in symbols else symbol
+        self.strategy = strategy
 
 class Trader:
 
