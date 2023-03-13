@@ -9,12 +9,12 @@ import statistics
 import math
 import typing
 
-from typing import Dict, List
+from typing import Dict, List, Callable, Any
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
 
 # Dictionaries for converting between products and symbols
-products: Dict[Product, Symbol]
-symbols: Dict[Symbol, Product]
+products: Dict[Product, Symbol] = {}
+symbols: Dict[Symbol, Product] = {}
 
 # Must be hard-coded, not accessible via TradingState. IMC will publish this
 # information before each round, update here accordingly.
@@ -164,81 +164,167 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     print("Sell Orders:")
     for price in order_depth.sell_orders:
         print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
-        
-def maxNewPosition(position: Dict[Product, Position], new_orders: Dict[Product, List[Order]],
-    symbol: Symbol, buy: bool) -> int:
-    """
-    Computes the maximum quantity of a new position that can be opened for a given symbol in the
-    given direction, considering position limits, the current position, and the orders to be
-    executed by this strategy at the end of the time step.
-    
-    Parameters:
-    position (Dict[Product, Position]): The current positions.
-    new_orders (Dict[Product, List[Order]]): The orders that will be executed at the end of the current time step.
-    symbol (Symbol): The symbol to compute the maximum position for.
-    buy (bool): Whether the position is a buy or sell position. True for buy, False for sell.
-    
-    Returns:
-    (int): The maximum quantity of a new position that can be opened for the given symbol, in the given direction.
-    This number will be positive if buy is True, and negative if buy is False, unless the current position is already
-    over the limit, in which case it will be negative if buy is True and positive if buy is False.
-    """
-    global limits
-    global symbols
-    
-    # Instead of crashing when a symbol is not in limits or symbols, return a very large/small number
-    if symbol not in limits or symbol not in symbols:
-        return pow(10, 5) if buy else -pow(10, 5)
-    
-    product = symbols[symbol]
-    
-    # If there is no current position, assume it is 0
-    current_position = 0
-    if product in position:
-        current_position = position[product]
-    
-    # If there are no new orders, assume the new position will be 0
-    new_position = 0
-    if product in new_orders:
-        new_position = sum([order.quantity for order in new_orders[product]])
-    
-    # If the current position is already over the limit, return 0
-    if buy:
-        return max(limits[symbol] - current_position - new_position, 0)
-    else:
-        return min(-limits[symbol] - current_position - new_position, 0)
 
-def addLimitOrder(new_orders: Dict[Product, List[Order]], position: Dict[Product, Position],
-    symbol: Symbol, buy: bool, quantity: int, price: int) -> None:
+class Strategy:
     """
-    Places a limit order at the given price and quantity. Checks the current positions and orders to ensure that the
-    quantity does not exceed the maximum position limit.
-    
-    Parameters:
-    new_orders (Dict[Product, List[Order]]): The orders that will be executed at the end of the current time step. This
-    function will add a new order to this dictionary.
-    position (Dict[Product, Position]): The current positions.
-    symbol (Symbol): The symbol to place the order for.
-    buy (bool): Whether the order is a buy or sell order. True for buy, False for sell.
-    quantity (int): The quantity of the order.
-    price (int): The price of the order.    
+    A simple trading strategy class that makes it easier to write strategies and especially to track
+    any associated data that should persist data across time steps.
     """
-    global symbols
-    product = symbols[symbol]
     
-    max_new = maxNewPosition(position, new_orders, symbol, buy)
-    
-    if buy and quantity > max_new:
-        quantity = max_new
-    elif not buy and quantity > -max_new:
-        quantity = max_new
-    
-    if quantity != 0:
-        if product not in new_orders:
-            new_orders[product] = []
-        
-        new_orders[product].append(Order(symbol, price, quantity))
+    def __init__(self, symbol: Symbol, pos_limit: Position, strategy: Callable[[Any, TradingState], None]):
+        """
+        Create a new strategy. The run function should take this Strategy instance, and a TradingState.
+        """
+        self.symbol = symbol
+        self.pos_limit = pos_limit
+        global symbols
+        self.product = symbols[symbol] if symbol in symbols else symbol
+        self.strategy = strategy
+        self.data: Dict[Any, Any] = {} # A dictionary of data that persists across time steps
 
+    def run(self, state: TradingState) -> List[Order]:
+        """
+        Run this strategy for the given TradingState. This function will return a list of orders to be executed
+        for this strategy's symbol at the end of the time step.
+        """
+        self.my_orders: List[Order] = []
+        self.order_depth_after_mkt_orders = state.order_depths[self.symbol] if \
+            self.symbol in state.order_depths else OrderDepth()
+        self.strategy(self, state)
+        return self.my_orders
+
+    def maxNewPosition(self, current_position: Position, buy: bool) -> int:
+        """
+        Computes the maximum quantity of a new position that can be opened for this strategy's symbol in the
+        given direction, considering position limits, the current position, and the orders to be executed by
+        this strategy at the end of the time step.
+        
+        Parameters:
+        current_position (Position): The current position for this strategy's symbol.
+        buy (bool): Whether the position is a buy or sell position. True for buy, False for sell.
+        
+        Returns:
+        (int): The maximum quantity of a new position that can be opened in the given direction. This number will be
+        positive if buy is True, and negative if buy is False, unless the current position is already over the limit,
+        in which case it will be 0.
+        """
+        
+        # Calculate the new position that will be opened by the orders to be executed by this strategy
+        new_position = sum([order.quantity for order in self.my_orders])
+        
+        # If the current position is already over the limit, return 0
+        if buy:
+            return max(limits[self.symbol] - current_position - new_position, 0)
+        else:
+            return min(-limits[self.symbol] - current_position - new_position, 0)
+
+    def addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
+        """
+        Places a limit order at the given price and quantity, subject to the position limit. Checks the current
+        positions and orders to ensure that the quantity does not exceed the maximum position limit for this symbol.
+        
+        Parameters:
+        current_position (Position): The current position for this strategy's symbol.
+        buy (bool): Whether the order is a buy or sell order. True for buy, False for sell.
+        price (int): The price at which to place the order.
+        quantity (int): The quantity of the order. Will be adjusted to fit within the position limit.
+
+        Returns:
+        (Order): The order that is to be placed.
+        """
+        
+        max_new = self.maxNewPosition(current_position, buy)
+        
+        if buy:
+            quantity = min(abs(quantity), abs(max_new))
+        else:
+            quantity = -min(abs(quantity), abs(max_new))
+
+        new_order = Order(self.symbol, price, quantity)
+
+        self.my_orders.append(new_order)
+        return new_order
+
+    def addMarketOrders(self, order_depth_after_mkt_orders: OrderDepth, current_position: Position,
+        buy: bool, quantity: int) -> List[Order]:
+        """
+        Places a market order for the given quantity. Checks the current positions and orders to ensure that the
+        quantity does not exceed the maximum position limit. Fills orders at the market price until either the quantity
+        we  want to fill is filled, or there are no more orders to fill. removes the filled orders from our
+        created order depth.
+
+        Parameters:
+        order_depth_after_mkt_orders (OrderDepth): The order depth after market orders have been filled.
+        current_position (Position): The current position for this strategy's symbol.
+        buy (bool): Whether the order is a buy or sell order. True for buy, False for sell.
+        quantity (int): The quantity of the order.
+
+        Returns:
+        List[Order]: The list of market orders that are to be executed.
+        """
+
+        max_new = self.maxNewPosition(current_position, buy)
+        
+        if buy:
+            quantity = min(abs(quantity), abs(max_new))
+        else:
+            quantity = -min(abs(quantity), abs(max_new))
+
+        # make sure the order depth is sorted
+        sortOrderDepth(order_depth_after_mkt_orders)
+
+        # we will go through the lowest sell orders for a buy, and the highest buy orders for a sell
+        orders = None
+        if buy:
+            orders = order_depth_after_mkt_orders.sell_orders
+        else:
+            orders = order_depth_after_mkt_orders.buy_orders
+
+        volume_filled = 0
+        remaining_quantity = 0
+
+        new_orders: List[Order] = []
+
+        if quantity != 0:
+            
+            for price in orders:
+
+                volume_filled += orders[price]
+
+                # Note: if there aren't enough orders to fill the quantity, we will fill as many as we can
+                if volume_filled >= quantity:
+                    remaining_quantity = quantity - (volume_filled - orders[price])
+
+                    new_orders.append(Order(self.symbol, price, remaining_quantity))
+
+                    if remaining_quantity == orders[price]: # if the final order to be placed is the same size as the 
+                        # matching order in the order book, we can just delete the order from the order book, otherwise, 
+                        # we remove (from that order) the remaining quantity we need to fill
+                        if buy:
+                            del order_depth_after_mkt_orders.sell_orders[price]
+                        else:
+                            del order_depth_after_mkt_orders.buy_orders[price]
+                    else:
+                        if buy:
+                            order_depth_after_mkt_orders.sell_orders[price] -= remaining_quantity
+                        else:
+                            order_depth_after_mkt_orders.buy_orders[price] -= remaining_quantity
+                    break
+                else: # delete orders from our order book as we fill them
+
+                    new_orders.append(Order(self.symbol, price, orders[price]))
+
+                    if buy:
+                        del order_depth_after_mkt_orders.sell_orders[price]
+                    else:
+                        del order_depth_after_mkt_orders.buy_orders[price]
+
+        self.my_orders.extend(new_orders)
+
+        return new_orders
+
+# Strategies to run
+strategies: List[Strategy] = []
 
 class Trader:
 
@@ -252,5 +338,11 @@ class Trader:
         makeProductSymbolDicts(state.listings)
         global products
         global symbols
+        
         result = {}
+        
+        global strategies
+        for strategy in strategies:
+            result[strategy.product] = strategy.run(state)
+        
         return result
