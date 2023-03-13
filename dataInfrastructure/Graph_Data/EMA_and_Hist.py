@@ -15,7 +15,7 @@ except:
     print("Path Already exists")
 
 
-with open('data_test3.csv', 'r') as csv_file:
+with open('Basic_Log.csv', 'r') as csv_file:
     reader = csv.reader(csv_file)
 
     lines = []
