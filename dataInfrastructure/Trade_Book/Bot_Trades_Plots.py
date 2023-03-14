@@ -65,3 +65,24 @@ for row in rows:
         new_trade = Trade(symbol, int(float(price)), int(quantity), timestamp=timestamp)
         trades[symbol].append(new_trade)
 
+def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str, bin_extents: int = 4) -> None:
+    """
+    Plot a histogram of trade prices, show it, and save it to a pdf file
+    
+    trades (List[Trade]): A list of trades to plot
+    symbol (Symbol): The symbol of the trades
+    file_path (str): The path to save the pdf file to
+    bin_extents (int):  How far to extend the bins on either side of the min and max prices
+    """
+    prices = [trade.price for trade in trades]
+    bins = np.arange(min(prices) - bin_extents, max(prices) + bin_extents, 1)
+    plt.hist(prices, bins=bins)
+    plt.title("Bot Trades Price Histogram - " + symbol)
+    plt.ylabel('Frequency')
+    plt.xlabel('Price')
+    plt.savefig(file_path)
+    plt.show()
+    plt.clf()
+
+for symbol in trades:
+    plotTradePriceHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
