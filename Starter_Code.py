@@ -23,6 +23,22 @@ limits: Dict[Symbol, int] = {
     'BANANAS': 20,
 }
 
+# hard coded frequency distribution for pearls based on the normal curve of last prices; 9995 to 9999 are treated 
+# separately from 10001 to 10005 (buys vs sells). For example, pearl_distribution[9995] is the frequency that pearls 
+# sold/bought for 9995 were traded at (quantity of trades at 9995 / total quantity of trades from 9995 to 9999)
+pearl_distribution: Dict[int,float] = {
+    9995: 0.06,
+    9996: 0.14,
+    9997: 0.2,
+    9998: 0.27,
+    9999: 0.33, 
+    10001: 0.36,
+    10002: 0.29,
+    10003: 0.19,
+    10004: .10,
+    10005: .06
+}
+
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
     Converts the symbol -> listing dictionary into product -> symbol and symbol -> product dictionaries,
@@ -326,8 +342,56 @@ class Strategy:
 
         return new_orders
 
+def market_making_pearls_strategy(self: Strategy, state: TradingState) -> None:
+    global pearl_distribution
+
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    max_buy = self.maxNewPosition(state.position[self.symbol], True)
+    max_sell = self.maxNewPosition(state.position[self.symbol], False)
+
+    sell_orders : Dict[int, int] = {
+        10001: 0,
+        10002: 0,
+        10003: 0,
+        10004: 0,
+        10005: 0
+    }
+    buy_orders : Dict[int, int] = {
+        9999: 0,
+        9998: 0,
+        9997: 0,
+        9996: 0,
+        9995: 0
+    }
+
+    if max_sell < 0:
+        sell_orders[10001] = int(math.ceil(max_sell * pearl_distribution[10001]))
+        sell_orders[10002] = int(math.ceil(max_sell * pearl_distribution[10002]))
+        sell_orders[10003] = int(math.ceil(max_sell * pearl_distribution[10003]))
+        sell_orders[10004] = int(math.ceil(max_sell * pearl_distribution[10004]))
+        sell_orders[10005] = int(math.ceil(max_sell * pearl_distribution[10005]))
+    if max_buy > 0:
+        buy_orders[9999] = int(math.floor(max_buy * pearl_distribution[9999]))
+        buy_orders[9998] = int(math.floor(max_buy * pearl_distribution[9998]))
+        buy_orders[9997] = int(math.floor(max_buy * pearl_distribution[9997]))
+        buy_orders[9996] = int(math.floor(max_buy * pearl_distribution[9996]))
+        buy_orders[9995] = int(math.floor(max_buy * pearl_distribution[9995]))
+
+    print("current position: ", str(state.position[self.symbol]))
+
+    for price in buy_orders:
+        if buy_orders[price] > 0:
+            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price)
+    for price in sell_orders:
+        if sell_orders[price] < 0:
+            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
+
 # Strategies to run
-strategies: List[Strategy] = []
+strategies: List[Strategy] = [
+    Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy)
+]
 
 class Trader:
 
