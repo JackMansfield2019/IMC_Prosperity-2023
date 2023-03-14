@@ -209,13 +209,16 @@ class Strategy:
         in which case it will be 0.
         """
         
-        # Calculate the new position that will be opened by the orders to be executed by this strategy
-        new_position = sum([order.quantity for order in self.my_orders])
+        # Positions are restricted to the following conditions:
+        # 1. The current buy orders + the current position must be less than or equal to the buy limit
+        # 2. The current sell orders + the current position must be greater than or equal to the sell limit
         
         # If the current position is already over the limit, return 0
         if buy:
+            new_position = sum([order.quantity for order in self.my_orders if order.quantity > 0])
             return max(limits[self.symbol] - current_position - new_position, 0)
         else:
+            new_position = sum([order.quantity for order in self.my_orders if order.quantity < 0])
             return min(-limits[self.symbol] - current_position - new_position, 0)
 
     def addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
