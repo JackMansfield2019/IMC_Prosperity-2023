@@ -84,5 +84,35 @@ def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.show()
     plt.clf()
 
+def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
+    multipliers: List[int] = [12, 96, 1920]) -> None:
+    """
+    Plot the prices and exponential moving averages of many trades prices over time, show it, and save it to a pdf file
+    
+    trades (List[Trade]): A list of trades to plot
+    symbol (Symbol): The symbol of the trades
+    file_path (str): The path to save the pdf file to
+    """
+    size = len(trades)
+    time_data = range(size)
+    prices = [trade.price for trade in trades]
+    plt.plot(time_data, prices, label="Price")
+        
+    for mult in multipliers:
+        mult_inv = (1.0/mult)
+        moving_avg_data = np.zeros(shape=(size,))
+        moving_avg_data[0] = prices[0]
+        for t in range(1, size):
+                moving_avg_data[t] = math.exp(-mult_inv) * moving_avg_data[t-1] + (1 - math.exp(-mult_inv)) * prices[t]
+        plt.plot(time_data, moving_avg_data, label="1/" + str(mult))
+
+    plt.title("Price and EMA vs Time - " + symbol)
+    plt.ylabel('Price')
+    plt.xlabel('Time (minutes)')
+    plt.savefig(file_path)
+    plt.show()
+    plt.clf()
+
 for symbol in trades:
     plotTradePriceHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
+    plotTradePriceEMA(trades[symbol], symbol, sub_dir + "/Bot_Trades_Exp_Mov_Avg_" + symbol + ".pdf")
