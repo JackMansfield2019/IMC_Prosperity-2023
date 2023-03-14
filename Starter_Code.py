@@ -216,10 +216,10 @@ class Strategy:
         # If the current position is already over the limit, return 0
         if buy:
             new_position = sum([order.quantity for order in self.my_orders if order.quantity > 0])
-            return max(limits[self.symbol] - current_position - new_position, 0)
+            return max(self.pos_limit - current_position - new_position, 0)
         else:
             new_position = sum([order.quantity for order in self.my_orders if order.quantity < 0])
-            return min(-limits[self.symbol] - current_position - new_position, 0)
+            return min(-self.pos_limit - current_position - new_position, 0)
 
     def addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
         """
