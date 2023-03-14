@@ -1,0 +1,83 @@
+Constants:
+HFT_active_threshold
+Tick_size = undercut_value = HFT order price fluctuation = 0.01
+Order_absorption_rate = [0.1,0.5] # what % of the order book you want to absorb
+
+Imbalance_threshold = 0.5
+Imbalance_increment_multiplier = 2 OR  = 1/Imbalance_threshold
+
+ALGO:
+
+Filled Order Delay
+Hanging Orders
+Ping Pong
+
+#  price fluctuation at time t (OR volatility calulation)
+P_flux = | (P_t-1 - P_t-2) / (P_t-1) | * 10000 # percent increase
+
+#decide if we want to activate
+if P_flux > HFT_active_threshold
+
+    # Decide on base price
+        Base_price = 10,000
+        Base_price = current_mid Price
+        Base_price = Last_price
+
+    # Decide AP & BP
+        # PEARLS
+            Place AP & BP at all the price levels we found
+
+        # Base Strat
+            AP = Base_price + Tick_size
+            BP = Base price - Tick_size
+
+        # If using V high volatility. If high volatility market maker will place his orders deeper from standard situation
+            AP = Base_price + (| P_t - P_t-1 | + 1) * Tick_size
+            BP = Base price - (| P_t - P_t-1 | + 1) * Tick_size
+        
+        # if Using IM
+            q_b = total quantitiy of buy orders
+            q_s = toatal quantitiy of sell orders on the order book
+
+            if (q_b - q_s)/(q_b + q_s) > Imbalance_threshold:
+                AP = Base_price + Tick_size * Imbalance_increment_multiplier
+                BP = Base_price
+            elif (q_s – q_b)/(q_b + q_s) > Imbalance_threshold:
+                AP = Base_price
+                BP = P_t - Tick_size * Imbalance_increment_multiplier
+            else
+                AP = Base_price + Tick_size
+                BP = Base price - Tick_size
+                
+        # if using Both
+            q_b = total quantitiy of buy orders
+            q_s = toatal quantitiy of sell orders on the order book
+
+            if (q_b - q_s)/(q_b + q_s) > Imbalance_threshold:
+                AP = Base_price + (| P_t - P_t-1 | + Imbalance_increment_multiplier ) * Tick_size
+                BP = Base_price - | P_t - P_t-1 | * tick_size
+
+            elif (q_s – q_b)/(q_b + q_s) > Imbalance_threshold:
+                AP = Base_price + | P_t - P_t-1 | * tick_size
+                BP = Base_price - (| P_t - P_t-1 | + Imbalance_increment_multiplier ) * Tick_size
+
+            else
+                AP = Base_price + (| P_t - P_t-1 | + 1) * Tick_size
+                BP = Base price - (| P_t - P_t-1 | + 1) * Tick_size
+
+        # Adjust spread on one side to follow a price trend
+
+             
+    # Decide AS & BS
+        q_b = total quantitiy of buy orders
+        q_s = toatal quantitiy of sell orders on the order book
+
+        # Base
+        AS = BS = ((q_b + q_s)/2) * Order_absorption_rate
+
+        # Inventory Skew
+        Retrieve the max quantity of buys we can place this tick
+        distribute this quantity across the differnt price levels observed
+
+        Retrieve the max quantity of buys we can place this tick
+        distribute this quantity across the differnt price levels observed
