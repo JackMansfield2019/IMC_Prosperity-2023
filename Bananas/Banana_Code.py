@@ -385,6 +385,15 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
     - Base_strat for deciding AP and BP
     - Inventory Skew (maxNewPosition) for quantities
     - Signs from paper (Switch signs if doesn't work)
+
+    Hyperparameters (constants we will tune):
+    - tick_size = 1.0
+    - Activation_threshold(HF_at) = 0
+    - Order_absorption_rate = 0.3 
+    - ImbThresh = 0.5 
+    - IncMult = 2
+    - VolMult = 1
+
     '''
 
     if 'pt' not in self.data:
@@ -395,17 +404,18 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
     Order_absorption_rate = 0.3
     ImbThresh = 0.5
     IncMult = 2
-    # TradingState.order_depths["BANANAS"] = sortOrderDepth(TradingState.order_depths["BANANAS"])
-    # Buy_orders = TradingState.order_depths["BANANAS"].buy_orders[0]
-    # Sell_orders = TradingState.order_depths["BANANAS"].sell_orders[0]
+    tick_size = 1.0
+    VolMult = 1
+
+
     current_pt = getMidPrice(TradingState)
     if(len(self.data['pt']) < 2):
         self.data['pt'].append(current_pt)
         return
-    
+     
     pt1 = self.data['pt'][-1]
     pt2 = self.data['pt'][-2]
-    
+     
     p_flux = abs((pt1-pt2)/pt1)*10000
     
     if p_flux > HF_at:
@@ -415,34 +425,34 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
         AP = base_price + tick_size
         BP = base_price - tick_size
 
-        # If using V high volatility. If high volatility market maker will place his orders deeper from standard situation
-        tick_size = 1.0
-        AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size #changed + and -
-        BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
+        # # If using V high volatility. If high volatility market maker will place his orders deeper from standard situation
+        # tick_size = 1.0
+        # AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size #changed + and -
+        # BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
 
-        #If using Imbalance Threshhold
-        qb, qs = getQBoughtAndSold(TradingState)
+        # #If using Imbalance Threshhold
+        # qb, qs = getQBoughtAndSold(TradingState)
         
-        if (qb - qs)/ (qb + qs) > ImbThresh:
-            AP = base_price + tick_size * IncMult #shouldn't ask price be minus? 
-            BP = base_price      
-        elif (qs - qb)/(qb + qs) > ImbThresh:
-            AP = base_price
-            BP = base_price - tick_size * IncMult #Maybe +?
-        else:
-            AP = base_price + tick_size #Maybe -??
-            BP = base_price - tick_size #Maybe +??
+        # if (qb - qs)/ (qb + qs) > ImbThresh:
+        #     AP = base_price + tick_size * IncMult #shouldn't ask price be minus? 
+        #     BP = base_price      
+        # elif (qs - qb)/(qb + qs) > ImbThresh:
+        #     AP = base_price
+        #     BP = base_price - tick_size * IncMult #Maybe +?
+        # else:
+        #     AP = base_price + tick_size #Maybe -??
+        #     BP = base_price - tick_size #Maybe +??
         
-        #if using both
-        if (qb - qs)/ (qb + qs) > ImbThresh:
-            AP = base_price + (abs(current_pt - pt1) + IncMult)*tick_size  #shouldn't ask price be minus? 
-            BP = base_price      
-        elif (qs - qb)/(qb + qs) > ImbThresh:
-            AP = base_price
-            BP = base_price - (abs(current_pt - pt1) + IncMult)*tick_size #Maybe +?
-        else:
-            AP = base_price - (abs(current_pt - pt1)  + 1) * tick_size
-            BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
+        # #if using both
+        # if (qb - qs)/ (qb + qs) > ImbThresh:
+        #     AP = base_price + (abs(current_pt - pt1) + IncMult)*tick_size  #shouldn't ask price be minus? 
+        #     BP = base_price      
+        # elif (qs - qb)/(qb + qs) > ImbThresh:
+        #     AP = base_price
+        #     BP = base_price - (abs(current_pt - pt1) + IncMult)*tick_size #Maybe +?
+        # else:
+        #     AP = base_price - (abs(current_pt - pt1)  + 1) * tick_size
+        #     BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
         
 
         # # Base
@@ -458,8 +468,7 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
         self.addLimitOrder(self, state.position, True, BS, BP)
         
     #set new pt values
-    pt2 = pt1
-    pt1 = current_pt
+    self.data['pt'].append(current_pt)
 
     
 
