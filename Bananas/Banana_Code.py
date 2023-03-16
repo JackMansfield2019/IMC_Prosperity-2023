@@ -333,8 +333,6 @@ class Strategy:
         return new_orders
 
 #global variables to keep track of previous mid prices
-pt1 = 0
-pt2 = 0
 
 def getMidPrice(state: TradingState) -> float:
     Order_Depth = state.order_depths["BANANAS"]
@@ -404,6 +402,9 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
     if(len(self.data['pt']) < 2):
         self.data['pt'].append(current_pt)
         return
+    
+    pt1 = self.data['pt'][-1]
+    pt2 = self.data['pt'][-2]
     
     p_flux = abs((pt1-pt2)/pt1)*10000
     
