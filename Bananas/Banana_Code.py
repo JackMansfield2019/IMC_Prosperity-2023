@@ -335,6 +335,7 @@ class Strategy:
 #global variables to keep track of previous mid prices
 
 def getMidPrice(state: TradingState) -> float:
+    # print("State: ", state)
     Order_Depth = state.order_depths["BANANAS"]
     Buy_Orders = Order_Depth.buy_orders
     max_bid = -1
@@ -368,8 +369,9 @@ def getQBoughtAndSold(state: TradingState) -> tuple[int, int]:
 
     return qb, qs
 
-def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread: int, quantity: int, delay: int = 0,
-    hanging_orders: bool = False, ping_pong: bool = False) -> None:
+# def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread: int, quantity: int, delay: int = 0,
+#     hanging_orders: bool = False, ping_pong: bool = False) -> None:
+def bananaStrategy(self: Strategy, state: TradingState) -> None:
     '''
     Strategy for Bananas utilizing the paper 
     ToDo:
@@ -408,7 +410,7 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
     VolMult = 1
 
 
-    current_pt = getMidPrice(TradingState)
+    current_pt = getMidPrice(state)
     if(len(self.data['pt']) < 2):
         self.data['pt'].append(current_pt)
         return
@@ -469,12 +471,6 @@ def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread:
         
     #set new pt values
     self.data['pt'].append(current_pt)
-
-    
-
-    
-    
-
     
 
 
