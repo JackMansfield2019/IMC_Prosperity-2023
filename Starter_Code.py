@@ -9,7 +9,7 @@ import statistics
 import math
 import typing
 
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable, Any, TypeVar
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
 
 # Dictionaries for converting between products and symbols
@@ -157,6 +157,39 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     print("Sell Orders:")
     for price in order_depth.sell_orders:
         print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
+
+T = TypeVar('T')
+def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
+    """
+    Distributes the given value among the given probabilities. The probabilities are given as a dictionary
+    of any type to a float, which represents the distribution probability of that type. The returned dictionary
+    will map the supplied types to integers, which represent the amount of the value that should be distributed
+    into that bucket. The distribution will be rounded down, and the remaining value will be distributed
+    into the **lowest probability buckets**.
+    
+    Parameters:
+    value (int): The total value to distribute.
+    probabilities (Dict[T, float]): The probabilities of each bucket.
+    
+    Returns:
+    Dict[T, int]: The distribution of the value among the buckets.
+    """
+    # Distribute the value into the buckets, rounding down
+    values: Dict[T, int] = {p: math.floor(value * probabilities[p]) for p in probabilities}
+    remaining = value - sum(value for value in values.values())
+    
+    # Sort the probabilities in descending order
+    descending_keys = sorted(probabilities, key=lambda p: probabilities[p], reverse=True)
+    
+    # Distribute the remaining value into the lowest probability buckets
+    for key in descending_keys:
+        if remaining <= 0:
+            break
+        
+        values[key] += 1 # Add one to the bucket
+        remaining -= 1 # Subtract one from the remaining value
+        
+    return values
 
 class Strategy:
     """
