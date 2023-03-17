@@ -373,9 +373,61 @@ def getQBoughtAndSold(state: TradingState) -> tuple[int, int]:
 
     return qb, qs
 
-# def bananaStrategy(self: Strategy, state: TradingState, base_price: int, spread: int, quantity: int, delay: int = 0,
-#     hanging_orders: bool = False, ping_pong: bool = False) -> None:
+#banana strategies
+def basic_AP_BP(base_price, tick_size) -> tuple[int,int]:  
+    AP = base_price + tick_size
+    BP = base_price - tick_size
+    return [AP, BP]
 
+def volatility(base_price, tick_size, current_pt, pt1, self: Strategy, state: TradingState) -> tuple[int,int]:  
+    AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size
+    BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
+    if "BANANAS" not in state.position:
+            state_pos = 0
+    else:
+        state_pos =  state.position['BANANAS']
+
+    AS = Strategy.maxNewPosition(self, state_pos, False)
+    BS = Strategy.maxNewPosition(self, state_pos, True)
+    return [AP, BP]
+
+def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult, self: Strategy, state: TradingState) -> tuple[int,int]:
+    if (qb - qs)/ (qb + qs) > ImbThresh:
+        AP = base_price + tick_size * IncMult #shouldn't ask price be minus?
+        BP = base_price
+    elif (qs - qb)/(qb + qs) > ImbThresh:
+        AP = base_price
+        BP = base_price - tick_size * IncMult #Maybe +?
+    else:
+        AP = base_price + tick_size #Maybe -??
+        BP = base_price - tick_size #Maybe +??  
+    return [AP, BP]
+
+def imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult, self: Strategy, state: TradingState) -> tuple[int,int]:
+    if (qb - qs)/ (qb + qs) > ImbThresh:
+        AP = base_price + (abs(current_pt - pt1) + IncMult)*tick_size  #shouldn't ask price be minus?
+        BP = base_price
+    elif (qs - qb)/(qb + qs) > ImbThresh:
+        AP = base_price
+        BP = base_price - (abs(current_pt - pt1) + IncMult)*tick_size #Maybe +?
+    else:
+        P = base_price - (abs(current_pt - pt1)  + 1) * tick_size
+        BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
+    return [AP, BP]
+
+def basic_AS_BS(qb, qs, Order_absorption_rate) -> tuple[int,int]:
+    AS = BS = (((qb + qs)/2) * Order_absorption_rate)
+    return [AS,BS]
+
+def inventory_skew(self: Strategy, state: TradingState) -> tuple[int,int]:
+    if "BANANAS" not in state.position:
+            state_pos = 0
+    else:
+        state_pos =  state.position['BANANAS']
+
+    AS = Strategy.maxNewPosition(self, state_pos, False)
+    BS = Strategy.maxNewPosition(self, state_pos, True)
+    return [AS, BS]
 
 def bananaStrategy(self: Strategy, state: TradingState) -> None:
     '''
@@ -413,6 +465,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     IncMult = 2
     tick_size = 1.0
     VolMult = 1
+    qb, qs = getQBoughtAndSold(TradingState)
+    
 
     current_pt = getMidPrice(state)
     if(len(self.data['pt']) < 2):
@@ -428,18 +482,30 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     if p_flux > HF_at:
         base_price = current_pt
 
-        # base strat
-        AP = base_price + tick_size
-        BP = base_price - tick_size
+        #basic strategy APBP
+        APBP_vals = basic_AP_BP(base_price, tick_size, qb, qs, Order_absorption_rate)
 
+        #volatility strategy
+        APBP_vals = volatility(base_price, tick_size, current_pt, pt1, state, self, state)
+        
+        #imbalance strategy
+        APBP_vals = imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult, self, state)
+        
+        #both strategy
+        APBP_vals = imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult, self, state)
+
+        #basic strategy for ASBS
+        ASBS_vals = basic_AS_BS(qb, qs, Order_absorption_rate)
+
+        #inventory_skew
+        ASBS_vals = inventory_skew(self, state)
+        
         # # If using V high volatility. If high volatility market maker will place his orders deeper from standard situation
         # tick_size = 1.0
         # AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size #changed + and -
         # BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
 
         # #If using Imbalance Threshhold
-        # qb, qs = getQBoughtAndSold(TradingState)
-
         # if (qb - qs)/ (qb + qs) > ImbThresh:
         #     AP = base_price + tick_size * IncMult #shouldn't ask price be minus?
         #     BP = base_price
@@ -460,23 +526,25 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         # else:
         #     AP = base_price - (abs(current_pt - pt1)  + 1) * tick_size
         #     BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
-
-        # # Base
-        # AS = (((qb + qs)/2) * Order_absorption_rate)
-        # BS = AS
-
-        # Inventory Skew
+        
+        #inventory skew
+        if "BANANAS" not in state.position:
+            state_pos = 0
+        else:
+            state_pos =  state.position['BANANAS']
+        AS = Strategy.maxNewPosition(self, state_pos, False)
+        BS = Strategy.maxNewPosition(self, state_pos, True)
+        
+        state_pos 
         if "BANANAS" not in state.position:
             state_pos = 0
         else:
             state_pos =  state.position['BANANAS']
 
-        AS = Strategy.maxNewPosition(self, state_pos, False)
-        BS = Strategy.maxNewPosition(self, state_pos, True)
-
         # addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
-        self.addLimitOrder(state_pos, False, AS, AP)
-        self.addLimitOrder(state_pos, True, BS, BP)
+        #AP, BP, AS, BS
+        self.addLimitOrder(state_pos, False, ASBS_vals[0], APBP_vals[0])
+        self.addLimitOrder(state_pos, True, ASBS_vals[1], APBP_vals[1])
 
     # set new pt values
     self.data['pt'].append(current_pt)
