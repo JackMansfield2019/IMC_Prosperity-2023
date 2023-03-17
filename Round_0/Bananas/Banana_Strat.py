@@ -554,7 +554,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         
         #inventory skew
         
-        state_pos 
+        state_pos = 0 
         if "BANANAS" not in state.position:
             state_pos = 0
         else:
