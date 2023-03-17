@@ -6,17 +6,11 @@ df = pd.read_csv("data_test2.csv", sep=";")
 
 #create augmented dataframe (commodities w/ their corresponding mid prices)
 df_aug = pd.DataFrame(columns=["PEARLS", "BANANAS"])
-pearl_index = 0
-banana_index = 0
 for idx in range(0, len(df.axes[0])):
-    if df['product'][idx] == "PEARLS":
-        # add the midprice to the pearls column
-        df_aug.loc[pearl_index, 'PEARLS'] = df['mid_price'][idx]
-        pearl_index += 1
-    else:
-        # add the midprice to the bananas column
-        df_aug.loc[banana_index, 'BANANAS'] = df['mid_price'][idx]
-        banana_index += 1
+    for product in df_aug.columns:
+        column_index: int = df_aug.columns.get_loc(product)
+        if product == df['product'][idx]:
+            df_aug.loc[df_aug[df_aug.columns[column_index]].count(), product] = df['mid_price'][idx]
 
 #correlation matrix computation
 corr = df_aug.astype('float64').corr()
