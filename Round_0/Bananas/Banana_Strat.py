@@ -560,12 +560,6 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         #     BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
         
         #inventory skew
-        if "BANANAS" not in state.position:
-            state_pos = 0
-        else:
-            state_pos =  state.position['BANANAS']
-        AS = Strategy.maxNewPosition(self, state_pos, False)
-        BS = Strategy.maxNewPosition(self, state_pos, True)
         
         state_pos 
         if "BANANAS" not in state.position:
