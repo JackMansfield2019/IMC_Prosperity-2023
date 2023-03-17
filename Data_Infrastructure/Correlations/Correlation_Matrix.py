@@ -5,7 +5,10 @@ import matplotlib.pyplot as plt
 df = pd.read_csv("data_test2.csv", sep=";")
 
 #create augmented dataframe (commodities w/ their corresponding mid prices)
-df_aug = pd.DataFrame(columns=["PEARLS", "BANANAS"])
+df_aug = pd.DataFrame(columns=[])
+for elem in df["product"]:
+    if elem not in columns:
+        columns.append(elem)
 for idx in range(0, len(df.axes[0])):
     for product in df_aug.columns:
         column_index: int = df_aug.columns.get_loc(product)
