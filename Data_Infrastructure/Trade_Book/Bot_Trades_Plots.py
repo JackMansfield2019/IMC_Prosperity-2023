@@ -1,6 +1,7 @@
 # Generates the following graphs for each symbol found in the given trades file:
 # 1. A histogram of the trade prices
-# 2. An exponential moving average plot of the trade prices over time
+# 2. A histogram of the trade prices, weighted by volume
+# 3. An exponential moving average plot of the trade prices over time
 
 # Adapted from dataInfrastructure/Graph_Data/EMA_and_Hist.py
 
@@ -77,8 +78,42 @@ def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str,
     prices = [trade.price for trade in trades]
     bins = np.arange(min(prices) - bin_extents, max(prices) + bin_extents, 1)
     plt.hist(prices, bins=bins)
-    plt.title("Bot Trades Price Histogram - " + symbol)
+    plt.title("Bot Trades Price Histogram (By Frequency) - " + symbol)
     plt.ylabel('Frequency')
+    plt.xlabel('Price')
+    plt.savefig(file_path)
+    plt.show()
+    plt.clf()
+
+def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path: str, bin_extents: int = 4) -> None:
+    """
+    Plot a histogram of trade prices based on volume, show it, and save it to a pdf file
+    
+    trades (List[Trade]): A list of trades to plot
+    symbol (Symbol): The symbol of the trades
+    file_path (str): The path to save the pdf file to
+    bin_extents (int):  How far to extend the bins on either side of the min and max prices
+    """
+    quantity_sums = {}
+    prices = []
+    for trade in trades:
+        
+        if trade.price not in quantity_sums:
+            quantity_sums[trade.price] = 0
+            
+        quantity_sums[trade.price] += trade.quantity
+        prices.extend([trade.price] * trade.quantity)
+        
+    total_volume = sum(quantity_sums.values())
+    reserved_percent = 0.1
+    
+    for price in sorted(quantity_sums):
+        print(price, ":", quantity_sums[price], ":", quantity_sums[price]/total_volume)
+    
+    bins = np.arange(min(prices) - bin_extents, max(prices) + bin_extents, 1)
+    plt.hist(prices, bins=bins)
+    plt.title("Bot Trades Price Histogram (By Volume) - " + symbol)
+    plt.ylabel('Volume')
     plt.xlabel('Price')
     plt.savefig(file_path)
     plt.show()
@@ -115,4 +150,5 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
 
 for symbol in trades:
     plotTradePriceHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
+    plotTradePriceVolumeHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_Volume_" + symbol + ".pdf")
     plotTradePriceEMA(trades[symbol], symbol, sub_dir + "/Bot_Trades_Exp_Mov_Avg_" + symbol + ".pdf")
