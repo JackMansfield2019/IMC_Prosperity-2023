@@ -23,20 +23,18 @@ limits: Dict[Symbol, int] = {
     'BANANAS': 20,
 }
 
-# hard coded frequency distribution for pearls based on the normal curve of last prices; 9995 to 9999 are treated 
-# separately from 10001 to 10005 (buys vs sells). For example, pearl_distribution[9995] is the frequency that pearls 
-# sold/bought for 9995 were traded at (quantity of trades at 9995 / total quantity of trades from 9995 to 9999)
+# hard coded frequency distribution for pearls based on the amount of volume traded at that price level
 pearl_distribution: Dict[int,float] = {
-    9995: 0.06,
-    9996: 0.14,
-    9997: 0.2,
-    9998: 0.27,
-    9999: 0.33, 
-    10001: 0.36,
-    10002: 0.29,
-    10003: 0.19,
-    10004: .10,
-    10005: .06
+    9995: 0.11952861952861951,
+    9996: 0.32365319865319864,
+    9997: 0.0,
+    9998: 0.5568181818181819,
+    9999: 0.0,
+    10001: 0.0,
+    10002: 0.5455337690631807,
+    10003: 0.0,
+    10004: 0.1803921568627451,
+    10005: 0.2740740740740741,
 }
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
