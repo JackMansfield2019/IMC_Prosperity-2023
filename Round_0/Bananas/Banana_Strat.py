@@ -218,6 +218,7 @@ class Strategy:
         self.strategy = strategy
         # A dictionary of data that persists across time steps
         self.data: Dict[Any, Any] = {}
+        self.Last_Price = 0
 
     def run(self, state: TradingState) -> List[Order]:
         """
@@ -390,6 +391,38 @@ def getMidPrice(state: TradingState) -> float:
 
     return float(max_bid + min_ask) / 2.0
 
+def getLastPrice(state: TradingState) -> float:
+    if "BANANAS" in state.market_trades:
+        Last_Price = state.market_trades["BANANAS"][0].price
+        Last_time = state.market_trades["BANANAS"][0].timestamp
+
+        for i in state.market_trades["BANANAS"]:
+            if i.timestamp > Last_time:
+                Last_Price = i.price
+
+            elif i.timestamp == Last_time:
+
+                Mid_Price = getMidPrice(state)
+
+                if (i.price - Mid_Price) < Last_Price - Mid_Price:
+                    Last_Price = i.price
+
+    if "BANANAS" in state.own_trades:
+        for i in state.own_trades["BANANAS"]:
+            if i.timestamp > Last_time:
+                Last_Price = i.price
+
+            elif i.timestamp == Last_time:
+
+                Mid_Price = getMidPrice(state)
+
+                if (i.price - Mid_Price) < Last_Price - Mid_Price:
+                    Last_Price = i.price
+    
+    if not "BANANAS" in state.market_trades and not "BANANAS" in state.own_trades:
+        return None
+
+    return Last_Price
 
 def getQBoughtAndSold(state: TradingState) -> tuple[int, int]:
     Order_Depth = state.order_depths["BANANAS"]
@@ -406,21 +439,21 @@ def getQBoughtAndSold(state: TradingState) -> tuple[int, int]:
     return qb, qs
 
 #banana strategies
-def basic_AP_BP(base_price, tick_size) -> tuple[int,int]:  
+def basic_AP_BP(self: Strategy, state: TradingState, base_price: float, tick_size: float) -> tuple[int,int]:  
     AP = base_price + tick_size
     BP = base_price - tick_size
     return [AP, BP]
 
-def volatility(base_price, tick_size, current_pt, pt1) -> tuple[int,int]:  
+def volatility(self: Strategy, state: TradingState, base_price: float, tick_size: float, current_pt: int, pt1: int) -> tuple[int,int]:  
     AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size
     BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
     return [AP, BP]
 
-def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult) -> tuple[int,int]:
-    if (qb - qs)/ (qb + qs) > ImbThresh:
+def imbalance(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float, tick_size: float, ImbThresh: float, IncMult: float) -> tuple[int,int]:
+    if (qb + qs) != 0 and (qb - qs)/ (qb + qs) > ImbThresh:
         AP = base_price + tick_size * IncMult #shouldn't ask price be minus?
         BP = base_price
-    elif (qs - qb)/(qb + qs) > ImbThresh:
+    elif (qb + qs) != 0 and (qs - qb)/(qb + qs) > ImbThresh:
         AP = base_price
         BP = base_price - tick_size * IncMult #Maybe +?
     else:
@@ -428,20 +461,24 @@ def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult) -> tuple[int,in
         BP = base_price - tick_size #Maybe +??  
     return [AP, BP]
 
-def imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult) -> tuple[int,int]:
-    if (qb - qs)/ (qb + qs) > ImbThresh:
+def imb_vol(self: Strategy, state: TradingState, qb: int, qs: int, current_pt: float, pt1: float, base_price: float, tick_size: float,ImbThresh: float, IncMult: float) -> tuple[int,int]:
+    if (qb + qs) != 0 and (qb - qs)/ (qb + qs) > ImbThresh:
         AP = base_price + (abs(current_pt - pt1) + IncMult)*tick_size  #shouldn't ask price be minus?
         BP = base_price
-    elif (qs - qb)/(qb + qs) > ImbThresh:
+    elif (qb + qs) != 0 and (qs - qb)/(qb + qs) > ImbThresh:
         AP = base_price
         BP = base_price - (abs(current_pt - pt1) + IncMult)*tick_size #Maybe +?
     else:
-        P = base_price - (abs(current_pt - pt1)  + 1) * tick_size
+        AP = base_price - (abs(current_pt - pt1)  + 1) * tick_size
         BP = base_price + ( abs(current_pt - pt1)  + 1) * tick_size
     return [AP, BP]
 
-def basic_AS_BS(qb, qs, Order_absorption_rate) -> tuple[int,int]:
-    AS = BS = (((qb + qs)/2) * Order_absorption_rate)
+def basic_AS_BS(self: Strategy,state: TradingState, qb: int, qs: int, Order_absorption_rate: float) -> tuple[int,int]:
+    AS, BS = inventory_skew(self,state)
+    if ( (((qb + qs)/2) * Order_absorption_rate) <= min(AS,BS) ):
+        AS = BS = (((qb + qs)/2) * Order_absorption_rate)
+    else:
+        AS = BS = min(AS,BS)
     return [AS,BS]
 
 def inventory_skew(self: Strategy, state: TradingState) -> tuple[int,int]:
@@ -485,14 +522,26 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
     # activation
     HF_at = -1
-    Order_absorption_rate = 0.3
+    Order_absorption_rate = 1.0
     ImbThresh = 0.5
     IncMult = 2
     tick_size = 1.0
     VolMult = 1
     qb, qs = getQBoughtAndSold(state)
+    #use last price if no last price use mid price. 
+    '''
+    if i set it to last price then ... 
+    option1:
+    always trade of last price
+    always trade of mid price
+    if no last price trade of mid price
     
+    should the function return the last traded price regardless of wether it was in this time step or not
 
+    no we should keep a gloabl last price 
+    funciton should try and grab the price from this iteration if not then it returns null.
+
+    '''
     current_pt = getMidPrice(state)
     if(len(self.data['pt']) < 2):
         self.data['pt'].append(current_pt)
@@ -500,30 +549,38 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
     pt1 = self.data['pt'][-1]
     pt2 = self.data['pt'][-2]
-
+    
     p_flux = abs((pt1-pt2)/pt1) * 10000
     print(p_flux)
 
     if p_flux > HF_at:
         base_price = current_pt
 
+        '''
+        #Base Price is always last price
+        if getLastPrice(state) == None:
+            #base_price = getMidPrice(state) # uncomment if you want base price to be mid when there is no last price
+            base_price = self.Last_Price
+        else:
+            base_price = self.Last_Price = getLastPrice(state)
+        '''
         #basic strategy APBP
-        APBP_vals = basic_AP_BP(base_price, tick_size)
+        APBP_vals = basic_AP_BP(self, state, base_price, tick_size)
 
         #volatility strategy
-        #APBP_vals = volatility(base_price, tick_size, current_pt, pt1)
+        #APBP_vals = volatility(self, state, base_price, tick_size, current_pt, pt1)
         
         #imbalance strategy
-        #APBP_vals = imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult)
+        #APBP_vals = imbalance(self, state, qb, qs, base_price, tick_size, ImbThresh, IncMult)
         
         #both strategy
-        #APBP_vals = imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult)
+        #APBP_vals = imb_vol(self, state, qb, qs, current_pt, pt1, base_price, tick_size, ImbThresh, IncMult)
 
         #basic strategy for ASBS
-        #ASBS_vals = basic_AS_BS(qb, qs, Order_absorption_rate)
+        ASBS_vals = basic_AS_BS(self, state, qb, qs, Order_absorption_rate)
 
         #inventory_skew
-        ASBS_vals = inventory_skew(self, state)
+        #ASBS_vals = inventory_skew(self, state)
         
         # # If using V high volatility. If high volatility market maker will place his orders deeper from standard situation
         # tick_size = 1.0
