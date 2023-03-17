@@ -6,6 +6,12 @@ import csv
 import os
 import matplotlib as mpl
 
+# Add the top-level directory to the path to import the datamodel package
+import sys
+sys.path.append('../../')
+from datamodel import Order, Product, Time
+
+from typing import Dict, List, Tuple
 
 sub_dir = input("Input Subdirectory: ")
 
@@ -44,9 +50,28 @@ for row in rows:
         continue
     break
 
+# Track ask and bid orders, map a product to a list of orders and corresponding times
+ask_orders: Dict[Product, List[Tuple[Order, Time]]] = {product: [] for product in products}
+bid_orders: Dict[Product, List[Tuple[Order, Time]]] = {product: [] for product in products}
+
 for row in rows:
     products[row['product']].append(float(row['mid_price']))
-
+    timestamp: Time = int(row['timestamp'])
+    product = row['product']
+    
+    # Parse all the trades and add them to the lists of orders
+    for trade_num in range(1, 4):
+        bid_price = row['bid_price_' + str(trade_num)]
+        bid_vol = row['bid_volume_' + str(trade_num)]
+        
+        if not (bid_price is None or bid_vol is None or bid_price == '' or bid_vol == ''):
+            bid_orders[product].append((Order(product, int(float(bid_price)), int(bid_vol)), timestamp))
+        
+        ask_price = row['ask_price_' + str(trade_num)]
+        ask_vol = row['ask_volume_' + str(trade_num)]
+        
+        if not(ask_price is None or ask_vol is None or ask_price == '' or ask_vol == ''):
+            ask_orders[product].append((Order(product, int(float(ask_price)), int(ask_vol)), timestamp))
 
 # EDIT THIS LINE FOR PRODUCT DATA (i.e. products['BANANAS'] gets BANANA data)
 my_path = os.path.abspath(__file__)
@@ -129,5 +154,33 @@ for prod in products:
 
     my_file = 'Exp_Mov_Avg' + prod + '.pdf'
     plt.savefig(os.path.join(my_path, my_file))
+    plt.show()
+    plt.clf()
+
+    # Create a plot of bid/ask spread
+    bid_plot_data = np.zeros(shape=(size,))
+    ask_plot_data = np.zeros(shape=(size,))
+    spread_plot_data = np.zeros(shape=(size,))
+    
+    # Timestamps are incremented by 100 each time, so we divide by 100 to get the index
+    # Take the max bid price and min ask price for each time interval
+    for bid_order, timestamp in bid_orders[prod]:
+        bid_plot_data[int(timestamp / 100)] = max(bid_plot_data[int(timestamp / 100)], bid_order.price)
+        
+    for ask_order, timestamp in ask_orders[prod]:
+        if ask_plot_data[int(timestamp / 100)] == 0:
+            ask_plot_data[int(timestamp / 100)] = ask_order.price
+        else:
+            ask_plot_data[int(timestamp / 100)] = min(ask_plot_data[int(timestamp / 100)], ask_order.price)
+    
+    # Calculate the spread
+    for i in range(size):
+        spread_plot_data[i] = ask_plot_data[i] - bid_plot_data[i]
+    
+    plt.plot(x, spread_plot_data, label="Spread")
+    plt.title("Bid/Ask Spread vs Time - " + prod)
+    plt.ylabel('Price')
+    plt.xlabel('Time (minutes)')
+    plt.savefig(os.path.join(my_path, "Bid_Ask_Spread_" + prod + ".pdf"))
     plt.show()
     plt.clf()

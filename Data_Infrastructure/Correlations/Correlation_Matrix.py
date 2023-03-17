@@ -2,13 +2,18 @@ import pandas as pd
 import seaborn as sns 
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("data_test1.csv", sep=";")
+df = pd.read_csv("data_test2.csv", sep=";")
 
 #create augmented dataframe (commodities w/ their corresponding mid prices)
-df_aug = pd.DataFrame(columns=["PEARLS", "BANANAS"])
-for idx in range(0, len(df.axes[0]), 2):
-    df_aug.loc[idx, "PEARLS"] = df["mid_price"][idx]
-    df_aug.loc[idx, "BANANAS"] = df["mid_price"][idx+1]
+df_aug = pd.DataFrame(columns=[])
+for elem in df["product"]:
+    if elem not in df_aug.columns:
+        df_aug[elem] = None
+for idx in range(0, len(df.axes[0])):
+    for product in df_aug.columns:
+        column_index: int = df_aug.columns.get_loc(product)
+        if product == df['product'][idx]:
+            df_aug.loc[df_aug[df_aug.columns[column_index]].count(), product] = df['mid_price'][idx]
 
 #correlation matrix computation
 corr = df_aug.astype('float64').corr()
