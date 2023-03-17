@@ -411,19 +411,12 @@ def basic_AP_BP(base_price, tick_size) -> tuple[int,int]:
     BP = base_price - tick_size
     return [AP, BP]
 
-def volatility(base_price, tick_size, current_pt, pt1, self: Strategy, state: TradingState) -> tuple[int,int]:  
+def volatility(base_price, tick_size, current_pt, pt1) -> tuple[int,int]:  
     AP = base_price + (abs(current_pt - pt1)  + 1) * tick_size
     BP = base_price - ( abs(current_pt - pt1)  + 1) * tick_size
-    if "BANANAS" not in state.position:
-            state_pos = 0
-    else:
-        state_pos =  state.position['BANANAS']
-
-    AS = Strategy.maxNewPosition(self, state_pos, False)
-    BS = Strategy.maxNewPosition(self, state_pos, True)
     return [AP, BP]
 
-def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult, self: Strategy, state: TradingState) -> tuple[int,int]:
+def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult) -> tuple[int,int]:
     if (qb - qs)/ (qb + qs) > ImbThresh:
         AP = base_price + tick_size * IncMult #shouldn't ask price be minus?
         BP = base_price
@@ -435,7 +428,7 @@ def imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult, self: Strategy,
         BP = base_price - tick_size #Maybe +??  
     return [AP, BP]
 
-def imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult, self: Strategy, state: TradingState) -> tuple[int,int]:
+def imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult) -> tuple[int,int]:
     if (qb - qs)/ (qb + qs) > ImbThresh:
         AP = base_price + (abs(current_pt - pt1) + IncMult)*tick_size  #shouldn't ask price be minus?
         BP = base_price
@@ -497,7 +490,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     IncMult = 2
     tick_size = 1.0
     VolMult = 1
-    qb, qs = getQBoughtAndSold(TradingState)
+    qb, qs = getQBoughtAndSold(state)
     
 
     current_pt = getMidPrice(state)
@@ -515,19 +508,19 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         base_price = current_pt
 
         #basic strategy APBP
-        APBP_vals = basic_AP_BP(base_price, tick_size, qb, qs, Order_absorption_rate)
+        APBP_vals = basic_AP_BP(base_price, tick_size)
 
         #volatility strategy
-        APBP_vals = volatility(base_price, tick_size, current_pt, pt1, state, self, state)
+        #APBP_vals = volatility(base_price, tick_size, current_pt, pt1)
         
         #imbalance strategy
-        APBP_vals = imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult, self, state)
+        #APBP_vals = imbalance(qb, qs, ImbThresh, base_price, tick_size, IncMult)
         
         #both strategy
-        APBP_vals = imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult, self, state)
+        #APBP_vals = imb_vol(qb, qs, current_pt, pt1, ImbThresh, base_price, tick_size, IncMult)
 
         #basic strategy for ASBS
-        ASBS_vals = basic_AS_BS(qb, qs, Order_absorption_rate)
+        #ASBS_vals = basic_AS_BS(qb, qs, Order_absorption_rate)
 
         #inventory_skew
         ASBS_vals = inventory_skew(self, state)
