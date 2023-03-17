@@ -1,0 +1,60 @@
+We will have a strategy object for each product that reaches the stat arb threshold
+
+Just Stat Arb Strategy Function
+
+    Note: keep track of the index this product should be correlated or dis-correlated with
+
+    store the hard-coded historic correlation as a global variable
+
+    calculate the current correlation
+
+    # check to make sure the product will not become less correlated AND the product's current correlation is far away
+    # enough from the historical correlation (we can now directionally bet)
+    if abs(historic corr) > abs(current corr) and abs(historic corr - current corr) > min_corr_difference_threshold: 
+
+        correlation_difference_percent = (historic corr - current corr) / 2
+
+        calculate moving average of the index's price
+
+        if(correlation_difference_percent > 0): # product will become more correlated
+
+            if(current index price > moving average of index price):
+
+                buy product, because becoming more positively correlated and index is going up
+
+                place market order all on the buy side, max quantity for now
+
+                if we are combining with market making, increase the sell limit prices we are offering so that our inventory
+                will become skewed in the positive direction
+
+            else:
+
+                sell product, because becoming more positively correlated and index is going down
+
+                place market order all on the sell side, max quantity for now
+
+                if we are combining with market making, decrease the buy limit prices we are offering so that our inventory
+                will become skewed in the negative direction
+
+        if(correlation_difference_percent < 0): # product will become more dis-correlated
+
+            if(current index price > moving average of index price):
+
+                sell product, because becoming more negatively correlated and index is going up
+
+                place market order all on the sell side, max quantity for now
+
+                if we are combining with market making, decrease the buy limit prices we are offering so that our inventory
+                will become skewed in the negative direction
+
+            else:
+
+                buy product, because becoming more negatively correlated and index is going down
+
+                place market order all on the buy side, max quantity for now
+
+                if we are combining with market making, increase the sell limit prices we are offering so that our inventory
+                will become skewed in the positive direction
+
+
+
