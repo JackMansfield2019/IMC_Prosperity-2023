@@ -6,6 +6,10 @@ import csv
 import os
 import matplotlib as mpl
 
+# Add the top-level directory to the path to import the datamodel package
+import sys
+sys.path.append('../../')
+from datamodel import Order, Product, Time
 
 sub_dir = input("Input Subdirectory: ")
 
