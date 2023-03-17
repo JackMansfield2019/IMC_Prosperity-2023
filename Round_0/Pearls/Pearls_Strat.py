@@ -9,7 +9,7 @@ import statistics
 import math
 import typing
 
-from typing import Dict, List, Callable, Any
+from typing import Dict, List, Callable, Any, TypeVar
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
 
 # Dictionaries for converting between products and symbols
@@ -181,6 +181,39 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     for price in order_depth.sell_orders:
         print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
 
+T = TypeVar('T')
+def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
+    """
+    Distributes the given value among the given probabilities. The probabilities are given as a dictionary
+    of any type to a float, which represents the distribution probability of that type. The returned dictionary
+    will map the supplied types to integers, which represent the amount of the value that should be distributed
+    into that bucket. The distribution will be rounded down, and the remaining value will be distributed
+    into the **lowest probability buckets**.
+    
+    Parameters:
+    value (int): The total value to distribute.
+    probabilities (Dict[T, float]): The probabilities of each bucket.
+    
+    Returns:
+    Dict[T, int]: The distribution of the value among the buckets.
+    """
+    # Distribute the value into the buckets, rounding down
+    values: Dict[T, int] = {p: math.floor(value * probabilities[p]) for p in probabilities}
+    remaining = value - sum(value for value in values.values())
+    
+    # Sort the probabilities in descending order
+    descending_keys = sorted(probabilities, key=lambda p: probabilities[p], reverse=True)
+    
+    # Distribute the remaining value into the lowest probability buckets
+    for key in descending_keys:
+        if remaining <= 0:
+            break
+        
+        values[key] += 1 # Add one to the bucket
+        remaining -= 1 # Subtract one from the remaining value
+        
+    return values
+
 class Strategy:
     """
     A simple trading strategy class that makes it easier to write strategies and especially to track
@@ -350,37 +383,11 @@ def market_making_pearls_strategy(self: Strategy, state: TradingState) -> None:
 
     max_buy = self.maxNewPosition(state.position[self.symbol], True)
     max_sell = self.maxNewPosition(state.position[self.symbol], False)
-
-    sell_orders : Dict[int, int] = {
-        10001: 0,
-        10002: 0,
-        10003: 0,
-        10004: 0,
-        10005: 0
-    }
-    buy_orders : Dict[int, int] = {
-        9999: 0,
-        9998: 0,
-        9997: 0,
-        9996: 0,
-        9995: 0
-    }
-
-    if max_sell < 0:
-        sell_orders[10001] = int(math.ceil(max_sell * pearl_distribution[10001]))
-        sell_orders[10002] = int(math.ceil(max_sell * pearl_distribution[10002]))
-        sell_orders[10003] = int(math.ceil(max_sell * pearl_distribution[10003]))
-        sell_orders[10004] = int(math.ceil(max_sell * pearl_distribution[10004]))
-        sell_orders[10005] = int(math.ceil(max_sell * pearl_distribution[10005]))
-    if max_buy > 0:
-        buy_orders[9999] = int(math.floor(max_buy * pearl_distribution[9999]))
-        buy_orders[9998] = int(math.floor(max_buy * pearl_distribution[9998]))
-        buy_orders[9997] = int(math.floor(max_buy * pearl_distribution[9997]))
-        buy_orders[9996] = int(math.floor(max_buy * pearl_distribution[9996]))
-        buy_orders[9995] = int(math.floor(max_buy * pearl_distribution[9995]))
-
-    print("current position: ", str(state.position[self.symbol]))
-
+    
+    buy_orders = distributeValue(max_buy, {price: pearl_distribution[price] for price in range(9999, 9994, -1)})
+    sell_orders = distributeValue(abs(max_sell), {price: pearl_distribution[price] for price in range(10001, 10006)})
+    sell_orders = {price: -sell_orders[price] for price in sell_orders}
+    
     for price in buy_orders:
         if buy_orders[price] > 0:
             self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price)
