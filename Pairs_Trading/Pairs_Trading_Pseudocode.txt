@@ -25,7 +25,8 @@ Just Stat Arb Strategy Function
                 place market order all on the buy side, max quantity for now
 
                 if we are combining with market making, increase the sell limit prices we are offering so that our inventory
-                will become skewed in the positive direction
+                will become skewed in the positive direction. Increase the sell limit prices by a factor of 2 (hyperparameter) 
+                relative to the mid-price. for example, sell_price_to_offer = mid-price + (cur_sell_price_calculated_from_market_making - mid-price) * 2
 
             else:
 
@@ -34,7 +35,8 @@ Just Stat Arb Strategy Function
                 place market order all on the sell side, max quantity for now
 
                 if we are combining with market making, decrease the buy limit prices we are offering so that our inventory
-                will become skewed in the negative direction
+                will become skewed in the negative direction. Decrease the buy limit prices by a factor of 2 (hyperparameter)
+                relative to the mid-price. for example, buy_price_to_offer = mid-price - (mid-price - cur_buy_price_calculated_from_market_making) * 2
 
         if(correlation_difference_percent < 0): # product will become more dis-correlated
 
@@ -45,7 +47,8 @@ Just Stat Arb Strategy Function
                 place market order all on the sell side, max quantity for now
 
                 if we are combining with market making, decrease the buy limit prices we are offering so that our inventory
-                will become skewed in the negative direction
+                will become skewed in the negative direction. Decrease the buy limit prices by a factor of 2 (hyperparameter)
+                relative to the mid-price. for example, buy_price_to_offer = mid-price - (mid-price - cur_buy_price_calculated_from_market_making) * 2
 
             else:
 
@@ -54,7 +57,8 @@ Just Stat Arb Strategy Function
                 place market order all on the buy side, max quantity for now
 
                 if we are combining with market making, increase the sell limit prices we are offering so that our inventory
-                will become skewed in the positive direction
+                will become skewed in the positive direction. Increase the sell limit prices by a factor of 2 (hyperparameter)
+                relative to the mid-price. for example, sell_price_to_offer = mid-price + (cur_sell_price_calculated_from_market_making - mid-price) * 2
 
 
 
