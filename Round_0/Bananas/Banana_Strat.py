@@ -375,10 +375,9 @@ class Strategy:
         self.my_orders.extend(new_orders)
 
         return new_orders
-
-
+#--------------------------------------------------------------------------------------------------------------
+#General utility functions 
 def getMidPrice(self: Strategy, state: TradingState) -> float:
-    # print("State: ", state)
     Order_Depth = state.order_depths[self.symbol]
     Buy_Orders = Order_Depth.buy_orders
     max_bid = -1
@@ -446,9 +445,21 @@ def getBookQuantities(self: Strategy, state: TradingState) -> tuple[int, int]:
         qs += Sell_Orders[key]
 
     return qb, qs
+#--------------------------------------------------------------------------------------------------------------
+#Specific AP/BP/AS/BS/Base Price Strat functions 
 
-# banana strategies
+def get_base_price(self: Strategy, state: TradingState) -> float:
+    '''
+    function to choose a base price
 
+    returns a float
+    '''
+
+    #mid price
+    current_pt = getMidPrice(self, state)
+    base_price  = current_pt
+
+    return base_price
 
 def basic_AP_BP(self: Strategy, state: TradingState, base_price: float, tick_size: float) -> tuple[int, int]:
     AP = base_price + tick_size
@@ -524,33 +535,9 @@ def get_EMA(self: Strategy, state: TradingState, qb: int, qs: int, base_price: f
         BP = base_price - tick_size  # Maybe +??
     return [AP, BP]
 
-
+#--------------------------------------------------------------------------------------------------------------
+#Main banana strat function
 def bananaStrategy(self: Strategy, state: TradingState) -> None:
-    '''
-    Strategy for Bananas utilizing the paper 
-    ToDo:
-    1. Write code to place orders (addLimitOrder)
-    2. Consult with the other team on how to use their code
-    3. Make it Modular
-    4. Test it with base configuration (switch signs if needed)
-
-
-    First Test:
-    - Use Mid Price
-    - HF_at = 0
-    - Base_strat for deciding AP and BP
-    - Inventory Skew (maxNewPosition) for quantities
-    - Signs from paper (Switch signs if doesn't work)
-
-    Hyperparameters (constants we will tune):
-    - tick_size = 1.0
-    - Activation_threshold(HF_at) = 0
-    - Order_absorption_rate = 0.3 
-    - ImbThresh = 0.5 
-    - IncMult = 2
-    - VolMult = 1
-    '''
-
     if 'pt' not in self.data:
         self.data['pt'] = []
 
@@ -565,22 +552,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     IncMult = 2
     VolMult = 1
     qb, qs = getBookQuantities(self, state)
+
     # use last price if no last price use mid price.
-    '''
-    if i set it to last price then ... 
-    option1:
-    always trade of last price
-    always trade of mid price
-    if no last price trade of mid price
-    
-    should the function return the last traded price regardless of wether it was in this time step or not
-
-    no we should keep a gloabl last price 
-    funciton should try and grab the price from this iteration if not then it returns null.
-
-    '''
-
-    #
     current_pt = getMidPrice(self, state)
     if(len(self.data['pt']) < 2):
         self.data['pt'].append(current_pt)
@@ -623,16 +596,10 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     print("EMA: ", self.EMA)
 
     if vol > HF_at:
-        base_price = current_pt
 
-        '''
-        #Base Price is always last price
-        if getLastPrice(self, state) == None:
-            #base_price = getMidPrice(state) # uncomment if you want base price to be mid when there is no last price
-            base_price = self.Last_Price
-        else:
-            base_price = self.Last_Price = getLastPrice(self, state)
-        '''
+        base_price = get_base_price(self, state)
+        #---------------------------------------------------------------------------------------------------------------------
+        #APBP Strats
         # basic strategy APBP
         APBP_vals = basic_AP_BP(self, state, base_price, tick_size)
 
@@ -647,6 +614,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
         # both strategy
         #APBP_vals = imb_vol(self, state, avg_price_change, qb, qs, base_price, tick_size, ImbThresh, IncMult)
+        #---------------------------------------------------------------------------------------------------------------------
+        #ASBS Strats
 
         # basic strategy for ASBS
         #ASBS_vals = basic_AS_BS(self, state, qb, qs, Order_absorption_rate)
@@ -659,8 +628,10 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         else:
             state_pos = state.position[self.product]
 
+        #debugging statement
         print("state_pos: ", state_pos)
         print("---------------------------------------")
+        #---------------------------------------------------------------------------------------------------------------------
 
         # addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
         #AP, BP, AS, BS
