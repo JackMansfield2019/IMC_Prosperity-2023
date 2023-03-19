@@ -4,7 +4,7 @@
 # 3. A run function that takes a tradingstate as input and outputs a "result" dict.
 
 import pandas
-import numpy
+import numpy as np
 import statistics
 import math
 import typing
@@ -168,7 +168,10 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
         print("Price: " + str(price) + " Volume: " +
               str(order_depth.sell_orders[price]))
 
+
 T = TypeVar('T')
+
+
 def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
     """
     Distributes the given value among the given probabilities. The probabilities are given as a dictionary
@@ -176,30 +179,33 @@ def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
     will map the supplied types to integers, which represent the amount of the value that should be distributed
     into that bucket. The distribution will be rounded down, and the remaining value will be distributed
     into the **lowest probability buckets**.
-    
+
     Parameters:
     value (int): The total value to distribute.
     probabilities (Dict[T, float]): The probabilities of each bucket.
-    
+
     Returns:
     Dict[T, int]: The distribution of the value among the buckets.
     """
     # Distribute the value into the buckets, rounding down
-    values: Dict[T, int] = {p: math.floor(value * probabilities[p]) for p in probabilities}
+    values: Dict[T, int] = {p: math.floor(
+        value * probabilities[p]) for p in probabilities}
     remaining = value - sum(value for value in values.values())
-    
+
     # Sort the probabilities in descending order
-    descending_keys = sorted(probabilities, key=lambda p: probabilities[p], reverse=True)
-    
+    descending_keys = sorted(
+        probabilities, key=lambda p: probabilities[p], reverse=True)
+
     # Distribute the remaining value into the lowest probability buckets
     for key in descending_keys:
         if remaining <= 0:
             break
-        
-        values[key] += 1 # Add one to the bucket
-        remaining -= 1 # Subtract one from the remaining value
-        
+
+        values[key] += 1  # Add one to the bucket
+        remaining -= 1  # Subtract one from the remaining value
+
     return values
+
 
 class Strategy:
     """
@@ -219,6 +225,7 @@ class Strategy:
         # A dictionary of data that persists across time steps
         self.data: Dict[Any, Any] = {}
         self.Last_Price = 0
+        self.EMA = 0
 
     def run(self, state: TradingState) -> List[Order]:
         """
@@ -391,6 +398,7 @@ def getMidPrice(state: TradingState) -> float:
 
     return float(max_bid + min_ask) / 2.0
 
+
 def getLastPrice(state: TradingState) -> float:
     if "BANANAS" in state.market_trades:
         Last_Price = state.market_trades["BANANAS"][0].price
@@ -418,11 +426,12 @@ def getLastPrice(state: TradingState) -> float:
 
                 if (i.price - Mid_Price) < Last_Price - Mid_Price:
                     Last_Price = i.price
-    
+
     if not "BANANAS" in state.market_trades and not "BANANAS" in state.own_trades:
         return None
 
     return Last_Price
+
 
 def getBookQuantities(state: TradingState) -> tuple[int, int]:
     Order_Depth = state.order_depths["BANANAS"]
@@ -438,58 +447,82 @@ def getBookQuantities(state: TradingState) -> tuple[int, int]:
 
     return qb, qs
 
-#banana strategies
-def basic_AP_BP(self: Strategy, state: TradingState, base_price: float, tick_size: float) -> tuple[int,int]:  
+# banana strategies
+
+
+def basic_AP_BP(self: Strategy, state: TradingState, base_price: float, tick_size: float) -> tuple[int, int]:
     AP = base_price + tick_size
     BP = base_price - tick_size
     return [AP, BP]
 
-def volatility(self: Strategy, state: TradingState, avg_price_change:float, base_price: float, tick_size: float) -> tuple[int,int]:  
-    AP = base_price + (abs(avg_price_change)  + 1) * tick_size
-    BP = base_price - ( abs(avg_price_change)  + 1) * tick_size
+
+def volatility(self: Strategy, state: TradingState, avg_price_change: float, base_price: float, tick_size: float) -> tuple[int, int]:
+    AP = base_price + (abs(avg_price_change) + 1) * tick_size
+    BP = base_price - (abs(avg_price_change) + 1) * tick_size
     return [AP, BP]
 
-def imbalance(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float, tick_size: float, ImbThresh: float, IncMult: float) -> tuple[int,int]:
-    if (qb + qs) != 0 and (qb - qs)/ (qb + qs) > ImbThresh:
-        AP = base_price + tick_size * IncMult #shouldn't ask price be minus?
+
+def imbalance(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float, tick_size: float, ImbThresh: float, IncMult: float) -> tuple[int, int]:
+    if (qb + qs) != 0 and (qb - qs) / (qb + qs) > ImbThresh:
+        AP = base_price + tick_size * IncMult  # shouldn't ask price be minus?
         BP = base_price
     elif (qb + qs) != 0 and (qs - qb)/(qb + qs) > ImbThresh:
         AP = base_price
-        BP = base_price - tick_size * IncMult #Maybe +?
+        BP = base_price - tick_size * IncMult  # Maybe +?
     else:
-        AP = base_price + tick_size #Maybe -??
-        BP = base_price - tick_size #Maybe +??  
+        AP = base_price + tick_size  # Maybe -??
+        BP = base_price - tick_size  # Maybe +??
     return [AP, BP]
 
-def imb_vol(self: Strategy, state: TradingState, avg_price_change: float, qb: int, qs: int, base_price: float, tick_size: float,ImbThresh: float, IncMult: float) -> tuple[int,int]:
-    if (qb + qs) != 0 and (qb - qs)/ (qb + qs) > ImbThresh:
-        AP = base_price + (abs(avg_price_change) + IncMult)*tick_size  #shouldn't ask price be minus?
+
+def imb_vol(self: Strategy, state: TradingState, avg_price_change: float, qb: int, qs: int, base_price: float, tick_size: float, ImbThresh: float, IncMult: float) -> tuple[int, int]:
+    if (qb + qs) != 0 and (qb - qs) / (qb + qs) > ImbThresh:
+        AP = base_price + (abs(avg_price_change) + IncMult) * \
+            tick_size  # shouldn't ask price be minus?
         BP = base_price
     elif (qb + qs) != 0 and (qs - qb)/(qb + qs) > ImbThresh:
         AP = base_price
-        BP = base_price - (abs(avg_price_change) + IncMult)*tick_size #Maybe +?
+        BP = base_price - (abs(avg_price_change) + IncMult) * \
+            tick_size  # Maybe +?
     else:
-        AP = base_price - (abs(avg_price_change)  + 1) * tick_size
-        BP = base_price + ( abs(avg_price_change)  + 1) * tick_size
+        AP = base_price - (abs(avg_price_change) + 1) * tick_size
+        BP = base_price + (abs(avg_price_change) + 1) * tick_size
     return [AP, BP]
 
-def basic_AS_BS(self: Strategy,state: TradingState, qb: int, qs: int, Order_absorption_rate: float) -> tuple[int,int]:
-    AS, BS = inventory_skew(self,state)
-    if ( (((qb + qs)/2) * Order_absorption_rate) <= min(AS,BS) ):
+
+def basic_AS_BS(self: Strategy, state: TradingState, qb: int, qs: int, Order_absorption_rate: float) -> tuple[int, int]:
+    AS, BS = inventory_skew(self, state)
+    if ((((qb + qs)/2) * Order_absorption_rate) <= min(AS, BS)):
         AS = BS = (((qb + qs)/2) * Order_absorption_rate)
     else:
-        AS = BS = min(AS,BS)
-    return [AS,BS]
+        AS = BS = min(AS, BS)
+    return [AS, BS]
 
-def inventory_skew(self: Strategy, state: TradingState) -> tuple[int,int]:
+
+def inventory_skew(self: Strategy, state: TradingState) -> tuple[int, int]:
     if "BANANAS" not in state.position:
-            state_pos = 0
+        state_pos = 0
     else:
-        state_pos =  state.position['BANANAS']
+        state_pos = state.position['BANANAS']
 
     AS = Strategy.maxNewPosition(self, state_pos, False)
     BS = Strategy.maxNewPosition(self, state_pos, True)
     return [AS, BS]
+
+
+def get_EMA(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float,
+            tick_size: float, EMA_Thresh: float, IncMult: float) -> float:
+
+    if self.EMA > EMA_Thresh:
+        AP = base_price + tick_size * IncMult  # shouldn't ask price be minus?
+        BP = base_price
+    elif self.EMA < -1 * EMA_Thresh:
+        AP = base_price
+        BP = base_price - tick_size * IncMult  # Maybe +?
+    else:
+        AP = base_price + tick_size  # Maybe -??
+        BP = base_price - tick_size  # Maybe +??
+    return [AP, BP]
 
 
 def bananaStrategy(self: Strategy, state: TradingState) -> None:
@@ -522,7 +555,9 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         self.data['pt'] = []
 
     # activation
-    lookback_period = 10 #if less than 10 do as far back as possible 
+    lookback_period = 10  # if less than 10 do as far back as possible
+    L = (1/50.0)
+    EMA_Thresh = 0.0
     tick_size = 1.0
     HF_at = -1
     Order_absorption_rate = 1.0
@@ -530,7 +565,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     IncMult = 2
     VolMult = 1
     qb, qs = getBookQuantities(state)
-    #use last price if no last price use mid price. 
+    # use last price if no last price use mid price.
     '''
     if i set it to last price then ... 
     option1:
@@ -551,32 +586,39 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
     pt1 = self.data['pt'][-1]
     pt2 = self.data['pt'][-2]
-    
-    p_flux = abs((pt1-pt2)/pt1) * 10000
 
+    # update EMA
+
+    if self.EMA == 0:
+        self.EMA = self.data['pt'][-1]
+        # (1-math.exp(-L))*quote[0]
+    else:
+        prev = self.EMA
+        self.EMA = math.exp(-L)*self.EMA+(1-math.exp(-L))*self.data['pt'][-1]
+
+    # Update average change in price
     lim = 0
     if len(self.data['pt']) < lookback_period:
         lim = len(self.data['pt'])
-    else: 
+    else:
         lim = lookback_period
-    
+
     temp_data = self.data['pt'][-lim:]
     avg = 0
-    for x in range(0,len(temp_data)-1):
+    for x in range(0, len(temp_data)-1):
         avg += abs(temp_data[x]-temp_data[x+1])
-    
-    avg/=lim
-    avg_price_change = avg
-    vol  = statistics.stdev(self.data['pt'][-lim:])*math.sqrt(lim)
 
+    avg /= lim
+    avg_price_change = avg
+    vol = statistics.stdev(self.data['pt'][-lim:])*math.sqrt(lim)
 
     print("size of self.data[pt]: ", len(self.data["pt"]))
     print("avg_price: ", avg_price_change)
     print("qs and qb avg: ", (qs+qb)/2.0)
-    AS, BS = inventory_skew(self,state)
-    print("Inventory skew: ", (AS+BS)/2.0)
+    AS, BS = inventory_skew(self, state)
     print("AS: ", AS)
     print("BS: ", BS)
+    print("EMA: ", self.EMA)
 
     if vol > HF_at:
         base_price = current_pt
@@ -589,29 +631,32 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         else:
             base_price = self.Last_Price = getLastPrice(state)
         '''
-        #basic strategy APBP
+        # basic strategy APBP
         #APBP_vals = basic_AP_BP(self, state, base_price, tick_size)
 
-        #volatility strategy
+        # volatility strategy
         #APBP_vals = volatility(self, state, avg_price_change, base_price, tick_size)
-        
-        #imbalance strategy
+
+        # imbalance strategy
         #APBP_vals = imbalance(self, state, qb, qs, base_price, tick_size, ImbThresh, IncMult)
-        
-        #both strategy
+
+        # EMA Strategy
+        APBP_vals = get_EMA(self, state, qb, qs, base_price,
+                            tick_size, EMA_Thresh, IncMult)
+
+        # both strategy
         #APBP_vals = imb_vol(self, state, avg_price_change, qb, qs, base_price, tick_size, ImbThresh, IncMult)
 
-        #basic strategy for ASBS
+        # basic strategy for ASBS
         #ASBS_vals = basic_AS_BS(self, state, qb, qs, Order_absorption_rate)
 
-        #inventory skew  
+        # inventory skew
         ASBS_vals = inventory_skew(self, state)
-
 
         if "BANANAS" not in state.position:
             state_pos = 0
-        else: 
-            state_pos =  state.position['BANANAS']
+        else:
+            state_pos = state.position['BANANAS']
 
         print("state_pos: ", state_pos)
         print("---------------------------------------")
@@ -629,6 +674,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 strategies: List[Strategy] = [
     Strategy('BANANAS', 20, bananaStrategy)
 ]
+
+
 class Trader:
     def run(self, state: TradingState) -> Dict[Product, List[Order]]:
         """
