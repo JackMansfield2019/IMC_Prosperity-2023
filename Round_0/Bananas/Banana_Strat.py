@@ -376,11 +376,12 @@ class Strategy:
         self.my_orders.extend(new_orders)
 
         return new_orders
+# --------------------------------------------------------------------------------------------------------------
+# General utility functions
 
 
-def getMidPrice(state: TradingState) -> float:
-    # print("State: ", state)
-    Order_Depth = state.order_depths["BANANAS"]
+def getMidPrice(self: Strategy, state: TradingState) -> float:
+    Order_Depth = state.order_depths[self.symbol]
     Buy_Orders = Order_Depth.buy_orders
     max_bid = -1
     for key in Buy_Orders:
@@ -400,42 +401,42 @@ def getMidPrice(state: TradingState) -> float:
     return float(max_bid + min_ask) / 2.0
 
 
-def getLastPrice(state: TradingState) -> float:
-    if "BANANAS" in state.market_trades:
-        Last_Price = state.market_trades["BANANAS"][0].price
-        Last_time = state.market_trades["BANANAS"][0].timestamp
+def getLastPrice(self: Strategy, state: TradingState) -> float:
+    if self.symbol in state.market_trades:
+        Last_Price = state.market_trades[self.symbol][0].price
+        Last_time = state.market_trades[self.symbol][0].timestamp
 
-        for i in state.market_trades["BANANAS"]:
+        for i in state.market_trades[self.symbol]:
             if i.timestamp > Last_time:
                 Last_Price = i.price
 
             elif i.timestamp == Last_time:
 
-                Mid_Price = getMidPrice(state)
+                Mid_Price = getMidPrice(self, state)
 
                 if (i.price - Mid_Price) < Last_Price - Mid_Price:
                     Last_Price = i.price
 
-    if "BANANAS" in state.own_trades:
-        for i in state.own_trades["BANANAS"]:
+    if self.symbol in state.own_trades:
+        for i in state.own_trades[self.symbol]:
             if i.timestamp > Last_time:
                 Last_Price = i.price
 
             elif i.timestamp == Last_time:
 
-                Mid_Price = getMidPrice(state)
+                Mid_Price = getMidPrice(self, state)
 
                 if (i.price - Mid_Price) < Last_Price - Mid_Price:
                     Last_Price = i.price
 
-    if not "BANANAS" in state.market_trades and not "BANANAS" in state.own_trades:
+    if not self.symbol in state.market_trades and not self.symbol in state.own_trades:
         return None
 
     return Last_Price
 
 
-def getBookQuantities(state: TradingState) -> tuple[int, int]:
-    Order_Depth = state.order_depths["BANANAS"]
+def getBookQuantities(self: Strategy, state: TradingState) -> tuple[int, int]:
+    Order_Depth = state.order_depths[self.symbol]
     Buy_Orders = Order_Depth.buy_orders
     qb = 0
     for key in Buy_Orders:
@@ -447,8 +448,22 @@ def getBookQuantities(state: TradingState) -> tuple[int, int]:
         qs += Sell_Orders[key]
 
     return qb, qs
+# --------------------------------------------------------------------------------------------------------------
+# Specific AP/BP/AS/BS/Base Price Strat functions
 
-# banana strategies
+
+def get_base_price(self: Strategy, state: TradingState) -> float:
+    '''
+    function to choose a base price
+
+    returns a float
+    '''
+
+    # mid price
+    current_pt = getMidPrice(self, state)
+    base_price = current_pt
+
+    return base_price
 
 
 def basic_AP_BP(self: Strategy, state: TradingState, base_price: float, tick_size: float) -> tuple[int, int]:
@@ -501,10 +516,10 @@ def basic_AS_BS(self: Strategy, state: TradingState, qb: int, qs: int, Order_abs
 
 
 def inventory_skew(self: Strategy, state: TradingState) -> tuple[int, int]:
-    if "BANANAS" not in state.position:
+    if self.product not in state.position:
         state_pos = 0
     else:
-        state_pos = state.position['BANANAS']
+        state_pos = state.position[self.product]
 
     AS = Strategy.maxNewPosition(self, state_pos, False)
     BS = Strategy.maxNewPosition(self, state_pos, True)
@@ -639,18 +654,18 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
     # update EMA
 
-    if self.EMA_short == 0:
-        self.EMA_short = self.data['mp'][-1]
-    else:
-        # prev = self.EMA_short
-        self.EMA_short = math.exp(-L_short)*self.EMA_short + \
-            (1-math.exp(-L_short))*self.data['mp'][-1]
+    # if self.EMA_short == 0:
+    #     self.EMA_short = self.data['mp'][-1]
+    # else:
+    #     # prev = self.EMA_short
+    #     self.EMA_short = math.exp(-L_short)*self.EMA_short + \
+    #         (1-math.exp(-L_short))*self.data['mp'][-1]
 
-    if self.EMA_long == 0:
-        self.EMA_long = self.data['mp'][-1]
-    else:
-        self.EMA_long = math.exp(-L_long)*self.EMA_long + \
-            (1-math.exp(-L_long))*self.data['mp'][-1]
+    # if self.EMA_long == 0:
+    #     self.EMA_long = self.data['mp'][-1]
+    # else:
+    #     self.EMA_long = math.exp(-L_long)*self.EMA_long + \
+    #         (1-math.exp(-L_long))*self.data['mp'][-1]
 
     # Update average change in price
     lim = 0
@@ -668,6 +683,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     avg_price_change = avg
     vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
 
+    # debugging print statements
     print("size of self.data[pt]: ", len(self.data["pt"]))
     print("avg_price: ", avg_price_change)
     print("qs and qb avg: ", (qs+qb)/2.0)
@@ -677,18 +693,12 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     print("EMA: ", self.EMA_short)
 
     if vol > HF_at:
-        base_price = current_pt
 
-        '''
-        #Base Price is always last price
-        if getLastPrice(state) == None:
-            #base_price = getMidPrice(state) # uncomment if you want base price to be mid when there is no last price
-            base_price = self.Last_Price
-        else:
-            base_price = self.Last_Price = getLastPrice(state)
-        '''
+        base_price = get_base_price(self, state)
+        # ---------------------------------------------------------------------------------------------------------------------
+        # APBP Strats
         # basic strategy APBP
-        #APBP_vals = basic_AP_BP(self, state, base_price, tick_size)
+        APBP_vals = basic_AP_BP(self, state, base_price, tick_size)
 
         # volatility strategy
         #APBP_vals = volatility(self, state, avg_price_change, base_price, tick_size)
@@ -702,6 +712,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
         # both strategy
         #APBP_vals = imb_vol(self, state, avg_price_change, qb, qs, base_price, tick_size, ImbThresh, IncMult)
+        # ---------------------------------------------------------------------------------------------------------------------
+        # ASBS Strats
 
         # basic strategy for ASBS
         #ASBS_vals = basic_AS_BS(self, state, qb, qs, Order_absorption_rate)
@@ -709,13 +721,15 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         # inventory skew
         ASBS_vals = inventory_skew(self, state)
 
-        if "BANANAS" not in state.position:
+        if self.product not in state.position:
             state_pos = 0
         else:
-            state_pos = state.position['BANANAS']
+            state_pos = state.position[self.product]
 
+        # debugging statement
         print("state_pos: ", state_pos)
         print("---------------------------------------")
+        # ---------------------------------------------------------------------------------------------------------------------
 
         # addLimitOrder(self, current_position: Position, buy: bool, quantity: int, price: int) -> Order:
         #AP, BP, AS, BS

@@ -16,7 +16,11 @@ from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol,
 products: Dict[Product, Symbol] = {}
 symbols: Dict[Symbol, Product] = {}
 
+# Dict of tradable product to its correlating index
 correlations: Dict[Symbol, Symbol] = {}
+
+# Dict of tradable product to its position limit
+limits: Dict[Symbol, int] = {}
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
@@ -328,13 +332,10 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, index: Symbol) -> 
         state.position[self.symbol] = 0
 
 # Strategies to run
-strategies: List[Strategy] = [
-    # this is an example of adding a pairrs trading strategy
-    Strategy('Example_Product', 30, lambda self, state: pairsTradingStrategy(self, state, "Example_Index")),
-]
+strategies: List[Strategy] = []
 
 for product in correlations:
-    strategies.append(Strategy(product, ))
+    strategies.append(Strategy(product, limits[product], lambda self, state: pairsTradingStrategy(self, state, correlations[product])))
 
 class Trader:
 
