@@ -225,7 +225,8 @@ class Strategy:
         # A dictionary of data that persists across time steps
         self.data: Dict[Any, Any] = {}
         self.Last_Price = 0
-        self.EMA = 0
+        self.EMA_short = 0
+        self.EMA_long = 0
 
     def run(self, state: TradingState) -> List[Order]:
         """
@@ -510,8 +511,8 @@ def inventory_skew(self: Strategy, state: TradingState) -> tuple[int, int]:
     return [AS, BS]
 
 
-def get_EMA(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float,
-            tick_size: float, EMA_Thresh: float, IncMult: float) -> float:
+def get_APBP(self: Strategy, state: TradingState, qb: int, qs: int, base_price: float,
+             tick_size: float, EMA_Thresh: float, IncMult: float) -> float:
 
     if self.EMA > EMA_Thresh:
         AP = base_price + tick_size * IncMult  # shouldn't ask price be minus?
@@ -522,7 +523,50 @@ def get_EMA(self: Strategy, state: TradingState, qb: int, qs: int, base_price: f
     else:
         AP = base_price + tick_size  # Maybe -??
         BP = base_price - tick_size  # Maybe +??
+
     return [AP, BP]
+
+
+def get_EMA(self: Strategy, state: TradingState, L: float, EMA: float) -> float:
+    '''
+    Function returns the current EMA
+    if EMA == 0:
+        set EMA to last midprice
+    else:
+        EMA = e^(-L) * EMA + (1 - e^(-L)) * Current_Mid_Price
+    '''
+    L_use = (1.0/L)
+    if EMA == 0:
+        EMA = self.data['mp'][-1]
+    else:
+        # prev = self.EMA_short
+        EMA = math.exp(-L_use)*EMA + (1-math.exp(-L_use))*self.data['mp'][-1]
+
+    return EMA
+
+
+def change_Spread(self: Strategy, state: TradingState, cross_over: float,
+                  bid_prices: List[int], ask_prices: List[int]) -> None:
+    '''
+    Returns the ask price and bid price
+
+    Pseudocode: 
+    - pass in a list of current bid prices and ask prices
+    - Based on cross-over, we decide which to mess with
+
+    if cross_over > 0:
+        mess with ask prices
+    elif cross_over < 0:
+        mess with bid prices
+    '''
+    mp = self.data['mp'][-1]
+
+    if cross_over > 0:
+        for i, price in enumerate(ask_prices):
+            ask_prices[i] = (mp + (price - mp) * 2)
+    elif cross_over < 0:
+        for i, price in enumerate(bid_prices):
+            bid_prices[i] = max((mp - (mp - price) * 2), 1)
 
 
 def bananaStrategy(self: Strategy, state: TradingState) -> None:
@@ -551,12 +595,13 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     - VolMult = 1
     '''
 
-    if 'pt' not in self.data:
-        self.data['pt'] = []
+    if 'mp' not in self.data:
+        self.data['mp'] = []
 
     # activation
     lookback_period = 10  # if less than 10 do as far back as possible
-    L = (1/50.0)
+    L_short = 12.0
+    L_long = 96.0
     EMA_Thresh = 0.0
     tick_size = 1.0
     HF_at = -1
@@ -577,40 +622,51 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
 
     no we should keep a gloabl last price 
     funciton should try and grab the price from this iteration if not then it returns null.
-
     '''
     current_pt = getMidPrice(state)
-    if(len(self.data['pt']) < 2):
-        self.data['pt'].append(current_pt)
+    self.data['mp'].append(current_pt)
+    if(len(self.data['mp']) == 1):
         return
 
-    pt1 = self.data['pt'][-1]
-    pt2 = self.data['pt'][-2]
+    # Updates the EMA
+    self.EMA_short = get_EMA(self, state, L_short, self.EMA_short)
+    self.EMA_long = get_EMA(self, state, L_long, self.EMA_long)
+    cross_over = self.EMA_short - self.EMA_long
+
+    #self.EMA_short = get_EMA(self, state, L_short, self.EMA_short)
+    # pt1 = self.data['mp'][-1]
+    # pt2 = self.data['mp'][-2]
 
     # update EMA
 
-    if self.EMA == 0:
-        self.EMA = self.data['pt'][-1]
-        # (1-math.exp(-L))*quote[0]
+    if self.EMA_short == 0:
+        self.EMA_short = self.data['mp'][-1]
     else:
-        prev = self.EMA
-        self.EMA = math.exp(-L)*self.EMA+(1-math.exp(-L))*self.data['pt'][-1]
+        # prev = self.EMA_short
+        self.EMA_short = math.exp(-L_short)*self.EMA_short + \
+            (1-math.exp(-L_short))*self.data['mp'][-1]
+
+    if self.EMA_long == 0:
+        self.EMA_long = self.data['mp'][-1]
+    else:
+        self.EMA_long = math.exp(-L_long)*self.EMA_long + \
+            (1-math.exp(-L_long))*self.data['mp'][-1]
 
     # Update average change in price
     lim = 0
-    if len(self.data['pt']) < lookback_period:
-        lim = len(self.data['pt'])
+    if len(self.data['mp']) < lookback_period:
+        lim = len(self.data['mp'])
     else:
         lim = lookback_period
 
-    temp_data = self.data['pt'][-lim:]
+    temp_data = self.data['mp'][-lim:]
     avg = 0
     for x in range(0, len(temp_data)-1):
         avg += abs(temp_data[x]-temp_data[x+1])
 
     avg /= lim
     avg_price_change = avg
-    vol = statistics.stdev(self.data['pt'][-lim:])*math.sqrt(lim)
+    vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
 
     print("size of self.data[pt]: ", len(self.data["pt"]))
     print("avg_price: ", avg_price_change)
@@ -618,7 +674,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
     AS, BS = inventory_skew(self, state)
     print("AS: ", AS)
     print("BS: ", BS)
-    print("EMA: ", self.EMA)
+    print("EMA: ", self.EMA_short)
 
     if vol > HF_at:
         base_price = current_pt
@@ -641,8 +697,8 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         #APBP_vals = imbalance(self, state, qb, qs, base_price, tick_size, ImbThresh, IncMult)
 
         # EMA Strategy
-        APBP_vals = get_EMA(self, state, qb, qs, base_price,
-                            tick_size, EMA_Thresh, IncMult)
+        APBP_vals = get_APBP(self, state, qb, qs, base_price,
+                             tick_size, EMA_Thresh, IncMult)
 
         # both strategy
         #APBP_vals = imb_vol(self, state, avg_price_change, qb, qs, base_price, tick_size, ImbThresh, IncMult)
@@ -667,7 +723,7 @@ def bananaStrategy(self: Strategy, state: TradingState) -> None:
         self.addLimitOrder(state_pos, True, ASBS_vals[1], APBP_vals[1])
 
     # set new pt values
-    self.data['pt'].append(current_pt)
+    self.data['mp'].append(current_pt)
 
 
 # Strategies to run

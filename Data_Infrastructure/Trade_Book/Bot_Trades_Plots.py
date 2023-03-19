@@ -5,6 +5,8 @@
 
 # Adapted from dataInfrastructure/Graph_Data/EMA_and_Hist.py
 
+from typing import Dict, List
+from datamodel import Trade, Symbol
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,9 +16,7 @@ import os
 # Add the top-level directory to the path to import the datamodel package
 import sys
 sys.path.append('../../')
-from datamodel import Trade, Symbol
 
-from typing import Dict, List
 
 sub_dir = input("Input Subdirectory: ")
 
@@ -48,28 +48,30 @@ trades: Dict[Symbol, List[Trade]] = {}
 # Loop through each row, and add the trade to the trades dictionary
 for row in rows:
     timestamp = int(row['Timestamp'])
-    
+
     # Loop over each trade in the row
     for trade_num in range(1, 65):
         symbol = row['Trade #: ' + str(trade_num)]
         price = row['Price ' + str(trade_num)]
         quantity = row['quantity ' + str(trade_num)]
-        
+
         # Skip this trade if it is empty
         if symbol is None or price is None or quantity is None or symbol == '' or price == '' or quantity == '':
             continue
-        
+
         if symbol not in trades:
             trades[symbol] = []
-        
+
         # Create a new trade and add it to the trades dictionary
-        new_trade = Trade(symbol, int(float(price)), int(quantity), timestamp=timestamp)
+        new_trade = Trade(symbol, int(float(price)),
+                          int(quantity), timestamp=timestamp)
         trades[symbol].append(new_trade)
+
 
 def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str, bin_extents: int = 4) -> None:
     """
     Plot a histogram of trade prices, show it, and save it to a pdf file
-    
+
     trades (List[Trade]): A list of trades to plot
     symbol (Symbol): The symbol of the trades
     file_path (str): The path to save the pdf file to
@@ -85,10 +87,11 @@ def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.show()
     plt.clf()
 
+
 def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path: str, bin_extents: int = 4) -> None:
     """
     Plot a histogram of trade prices based on volume, show it, and save it to a pdf file
-    
+
     trades (List[Trade]): A list of trades to plot
     symbol (Symbol): The symbol of the trades
     file_path (str): The path to save the pdf file to
@@ -97,19 +100,20 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     quantity_sums = {}
     prices = []
     for trade in trades:
-        
+
         if trade.price not in quantity_sums:
             quantity_sums[trade.price] = 0
-            
+
         quantity_sums[trade.price] += trade.quantity
         prices.extend([trade.price] * trade.quantity)
-        
+
     total_volume = sum(quantity_sums.values())
     reserved_percent = 0.1
-    
+
     for price in sorted(quantity_sums):
-        print(price, ":", quantity_sums[price], ":", quantity_sums[price]/total_volume)
-    
+        print(price, ":", quantity_sums[price],
+              ":", quantity_sums[price]/total_volume)
+
     bins = np.arange(min(prices) - bin_extents, max(prices) + bin_extents, 1)
     plt.hist(prices, bins=bins)
     plt.title("Bot Trades Price Histogram (By Volume) - " + symbol)
@@ -119,11 +123,12 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     plt.show()
     plt.clf()
 
+
 def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
-    multipliers: List[int] = [12, 96, 1920]) -> None:
+                      multipliers: List[int] = [12, 96, 1920]) -> None:
     """
     Plot the prices and exponential moving averages of many trades prices over time, show it, and save it to a pdf file
-    
+
     trades (List[Trade]): A list of trades to plot
     symbol (Symbol): The symbol of the trades
     file_path (str): The path to save the pdf file to
@@ -132,13 +137,14 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     time_data = range(size)
     prices = [trade.price for trade in trades]
     plt.plot(time_data, prices, label="Price")
-        
+
     for mult in multipliers:
         mult_inv = (1.0/mult)
         moving_avg_data = np.zeros(shape=(size,))
         moving_avg_data[0] = prices[0]
         for t in range(1, size):
-                moving_avg_data[t] = math.exp(-mult_inv) * moving_avg_data[t-1] + (1 - math.exp(-mult_inv)) * prices[t]
+            moving_avg_data[t] = math.exp(-mult_inv) * moving_avg_data[t-1] + \
+                (1 - math.exp(-mult_inv)) * prices[t]
         plt.plot(time_data, moving_avg_data, label="1/" + str(mult))
 
     plt.title("Price and EMA vs Time - " + symbol)
@@ -148,7 +154,11 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.show()
     plt.clf()
 
+
 for symbol in trades:
-    plotTradePriceHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
-    plotTradePriceVolumeHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_Volume_" + symbol + ".pdf")
-    plotTradePriceEMA(trades[symbol], symbol, sub_dir + "/Bot_Trades_Exp_Mov_Avg_" + symbol + ".pdf")
+    plotTradePriceHistogram(
+        trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
+    plotTradePriceVolumeHistogram(
+        trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_Volume_" + symbol + ".pdf")
+    plotTradePriceEMA(trades[symbol], symbol, sub_dir +
+                      "/Bot_Trades_Exp_Mov_Avg_" + symbol + ".pdf")
