@@ -11,6 +11,11 @@ import numpy as np
 import csv
 import os
 
+# Add the parent directory to the path to import Plot_Utils
+import sys
+sys.path.append('../')
+from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
+
 # Add the top-level directory to the path to import the datamodel package
 import sys
 sys.path.append('../../')
@@ -119,6 +124,30 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     plt.show()
     plt.clf()
 
+def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path: str,
+    title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
+    """
+    Plots the distribution of a market making strategy. Saves to a file and shows the plot.
+    
+    Parameters:
+    distribution (Dict[int, float]): The distribution to plot
+    symbol (Symbol): The symbol of the distribution
+    file_path (str): The path to save the pdf file to
+    title (str | None): The title of the plot. If None, a default title will be used.
+    y_label (str): The label for the y-axis. Defaults to "Distribution"
+    x_label (str): The label for the x-axis. Defaults to "Price Level"
+    """
+    if title is None:
+        title = "Market Making Distribution - " + symbol
+    
+    plt.bar(list(distribution.keys()), list(distribution.values()))
+    plt.title(title)
+    plt.ylabel(y_label)
+    plt.xlabel(x_label)
+    plt.savefig(file_path)
+    plt.show()
+    plt.clf()
+
 def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     multipliers: List[int] = [12, 96, 1920]) -> None:
     """
@@ -147,6 +176,25 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.savefig(file_path)
     plt.show()
     plt.clf()
+
+# Bananas: Use dynamic MM vol distribution
+buy_range = (-5, -1)
+sell_range = (1, 5)
+distribution = calcDynamicMMDistribution(trades['BANANAS'], buy_range, sell_range)
+plotMMDistribution(distribution, "BANANS", sub_dir + "/Bot_MM_Distribution_BANANAS.pdf")
+
+# Normalize distribution
+sell_side = {price_level: volume for price_level, volume in distribution.items()
+    if buy_range[0] <= price_level <= buy_range[1]}
+buy_side = {price_level: volume for price_level, volume in distribution.items()
+            if sell_range[0] <= price_level <= sell_range[1]}
+
+sell_side = normalizeTo(sell_side, 1)
+buy_side = normalizeTo(buy_side, 1)
+distribution = {**sell_side, **buy_side}
+
+# Print the distribution
+print(distributionToStr(distribution))
 
 for symbol in trades:
     plotTradePriceHistogram(trades[symbol], symbol, sub_dir + "/Bot_Trades_Hist_" + symbol + ".pdf")
