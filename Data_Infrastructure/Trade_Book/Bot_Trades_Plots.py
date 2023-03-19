@@ -119,6 +119,30 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     plt.show()
     plt.clf()
 
+def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path: str,
+    title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
+    """
+    Plots the distribution of a market making strategy. Saves to a file and shows the plot.
+    
+    Parameters:
+    distribution (Dict[int, float]): The distribution to plot
+    symbol (Symbol): The symbol of the distribution
+    file_path (str): The path to save the pdf file to
+    title (str | None): The title of the plot. If None, a default title will be used.
+    y_label (str): The label for the y-axis. Defaults to "Distribution"
+    x_label (str): The label for the x-axis. Defaults to "Price Level"
+    """
+    if title is None:
+        title = "Market Making Distribution - " + symbol
+    
+    plt.bar(list(distribution.keys()), list(distribution.values()))
+    plt.title(title)
+    plt.ylabel(y_label)
+    plt.xlabel(x_label)
+    plt.savefig(file_path)
+    plt.show()
+    plt.clf()
+
 def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     multipliers: List[int] = [12, 96, 1920]) -> None:
     """
