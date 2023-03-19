@@ -1,6 +1,11 @@
 # Basic utilities for plotting and manipulating data
 
-from typing import TypeVar, Dict
+from typing import TypeVar, Dict, List
+
+# Add the top-level directory to the path to import the datamodel package
+import sys
+sys.path.append('../../')
+from datamodel import Trade
 
 T = TypeVar('T')
 def normalizeTo(values: Dict[T, float], total: float) -> Dict[T, float]:
@@ -35,3 +40,18 @@ def distributionToStr(distribution: Dict[int, float]) -> str:
         s += "\t" + str(price_level) + ": " + str(distribution[price_level]) + ",\n"
     s += "}\n"
     return s
+
+def getMidPrice(trades: List[Trade]) -> float:
+    """
+    Calculates the mid price of the given trades. The mid price is the average of the highest and lowest prices.
+    
+    Parameters:
+    trades (List[Trade]): The trades to calculate the mid price of
+    
+    Returns:
+    float: The mid price of the given trades
+    """
+    
+    highest = max(trade.price for trade in trades)
+    lowest = min(trade.price for trade in trades)
+    return (highest + lowest) / 2
