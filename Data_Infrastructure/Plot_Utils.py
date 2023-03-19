@@ -17,3 +17,21 @@ def normalizeTo(values: Dict[T, float], total: float) -> Dict[T, float]:
     """
     current_total = sum(values.values())
     return {key : value * total / current_total for key, value in values.items()}
+
+def distributionToStr(distribution: Dict[int, float]) -> str:
+    """
+    Converts a distribution dictionary to a string. The distribution dictionary is a dictionary of price levels
+    corresponding to the desired distribution of values at that level.
+    
+    Parameters:
+    distribution: The distribution dictionary to convert to a string
+    
+    Returns:
+    A string representation of the distribution dictionary
+    """
+    
+    s: str = "distribution: Dict[int, float] = {\n"
+    for price_level in sorted(distribution.keys()):
+        s += "\t" + str(price_level) + ": " + str(distribution[price_level]) + ",\n"
+    s += "}\n"
+    return s
