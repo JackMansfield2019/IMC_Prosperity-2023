@@ -1,13 +1,13 @@
 # Basic utilities for plotting and manipulating data
 
-from datamodel import Trade
 import math
 import itertools
 from typing import TypeVar, Dict, List, Tuple
 
 # Add the top-level directory to the path to import the datamodel package
 import sys
-sys.path.append('../../')
+sys.path.append('../')
+from datamodel import Trade, Order, Product, Time, Symbol, UserId
 
 T = TypeVar('T')
 
