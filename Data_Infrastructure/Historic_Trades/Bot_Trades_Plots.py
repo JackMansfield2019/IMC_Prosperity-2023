@@ -5,8 +5,10 @@
 
 # Adapted from dataInfrastructure/Graph_Data/EMA_and_Hist.py
 
-from typing import Dict, List
+
 from datamodel import Trade, Symbol
+from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
+from typing import Dict, List
 import math
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,10 +18,8 @@ import os
 # Add the parent directory to the path to import Plot_Utils
 import sys
 sys.path.append('../')
-from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
 
 # Add the top-level directory to the path to import the datamodel package
-import sys
 sys.path.append('../../')
 
 
@@ -128,11 +128,12 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     plt.show()
     plt.clf()
 
+
 def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path: str,
-    title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
+                       title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
     """
     Plots the distribution of a market making strategy. Saves to a file and shows the plot.
-    
+
     Parameters:
     distribution (Dict[int, float]): The distribution to plot
     symbol (Symbol): The symbol of the distribution
@@ -143,7 +144,7 @@ def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path
     """
     if title is None:
         title = "Market Making Distribution - " + symbol
-    
+
     plt.bar(list(distribution.keys()), list(distribution.values()))
     plt.title(title)
     plt.ylabel(y_label)
@@ -151,6 +152,7 @@ def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path
     plt.savefig(file_path)
     plt.show()
     plt.clf()
+
 
 def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
                       multipliers: List[int] = [12, 96, 1920]) -> None:
@@ -182,15 +184,18 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.show()
     plt.clf()
 
+
 # Bananas: Use dynamic MM vol distribution
 buy_range = (-5, -1)
 sell_range = (1, 5)
-distribution = calcDynamicMMDistribution(trades['BANANAS'], buy_range, sell_range)
-plotMMDistribution(distribution, "BANANS", sub_dir + "/Bot_MM_Distribution_BANANAS.pdf")
+distribution = calcDynamicMMDistribution(
+    trades['BANANAS'], buy_range, sell_range)
+plotMMDistribution(distribution, "BANANS", sub_dir +
+                   "/Bot_MM_Distribution_BANANAS.pdf")
 
 # Normalize distribution
 sell_side = {price_level: volume for price_level, volume in distribution.items()
-    if buy_range[0] <= price_level <= buy_range[1]}
+             if buy_range[0] <= price_level <= buy_range[1]}
 buy_side = {price_level: volume for price_level, volume in distribution.items()
             if sell_range[0] <= price_level <= sell_range[1]}
 
