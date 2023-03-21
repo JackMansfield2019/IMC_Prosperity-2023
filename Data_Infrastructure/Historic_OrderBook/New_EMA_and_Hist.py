@@ -3,9 +3,25 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import math
+import sys
 
+if len(sys.argv) != 3:
+    print("Usage:", sys.argv[0], "<input_file> <output_directory>")
+    print("<input_file> is the path to the csv file to read from")
+    print("<output_directory> is the name of the directory to save the plots to")
+    exit()
 
-with open('Combined_HOB.csv', 'r') as csv_file:
+input_file = sys.argv[1]
+sub_dir = sys.argv[2]
+
+if not os.path.exists(input_file):
+    print("Input file does not exist")
+    exit(1)
+
+if not os.path.exists(sub_dir):
+    os.mkdir(sub_dir)
+
+with open(input_file, 'r') as csv_file:
     reader = csv.reader(csv_file)
 
     lines = []
