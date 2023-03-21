@@ -157,27 +157,30 @@ def csvToDict(file_name: str) -> Dict[str, List[str]]:
     return data_dict
     
 
-def parseCombinedLOB(file_name: str) -> Dict[Product, List[Tuple[Order, Time]]]:
+def parseCombinedLOB(file_name: str) -> Dict[Product, Dict[Time, Tuple[List[Order], float, float]]]:
     """
-    Parses the combined LOB file and returns a dictionary mapping products to tuples of an
-    order and the timestamp of that order.
+    Parses the combined LOB file and returns a dictionary mapping products to a dictionary mapping timestamps to a tuple
+    of a list of orders and the mid price and profit and loss at that timestamp.
     
     Parameters:
     file_name (str): The name of the file to parse
 
     Returns:
-    A dictionary mapping products to a list of tuples of an order and the timestamp of that order
+    A dictionary mapping products to a dictionary mapping timestamps to a tuple
+    of a list of orders and the mid price and profit and loss at that timestamp.
     """
     
     data_dict = csvToDict(file_name)    
     line_count = len(data_dict["timestamp"])
-    orders: Dict[Product, List[Tuple[Order, Time]]] = {}
+    all_data: Dict[Product, Dict[Time, Tuple[List[Order], float, float]]] = {}
 
     # Parse the lines
     for line_num in range(line_count):
         timestamp: Time = int(float(data_dict["timestamp"][line_num]))
         product: Product = data_dict["product"][line_num]
-        orders.setdefault(product, [])
+        mid_price: float = float(data_dict["mid_price"][line_num])
+        profit_and_loss: float = float(data_dict["profit_and_loss"][line_num])
+        orders: List[Order] = []
 
         for order_num in range(1, 4):
             bid_price = data_dict["bid_price_" + str(order_num)][line_num]
@@ -189,15 +192,18 @@ def parseCombinedLOB(file_name: str) -> Dict[Product, List[Tuple[Order, Time]]]:
                 bid_price = int(float(bid_price))
                 bid_volume = int(float(bid_volume))
                 bid_order = Order(product, bid_price, bid_volume)
-                orders[product].append((bid_order, timestamp))
+                orders.append(bid_order)
                 
             if ask_price != "" and ask_volume != "":
                 ask_price = int(float(ask_price))
                 ask_volume = int(float(ask_volume))
                 ask_order = Order(product, ask_price, ask_volume)
-                orders[product].append((ask_order, timestamp))
+                orders.append(ask_order)
+                
+        all_data.setdefault(product, {})
+        all_data[product][timestamp] = (orders, mid_price, profit_and_loss)
 
-    return orders
+    return all_data
 
 def parseCombinedTrades(file_name: str) -> Dict[Symbol, List[Trade]]:
     """
