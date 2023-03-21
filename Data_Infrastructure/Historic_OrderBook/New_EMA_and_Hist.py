@@ -51,6 +51,8 @@ for prod in products:
     plt.hist(vals, bins=np.arange(Min_bound - Bin_size,
                                   Max_bound + 2 * Bin_size, Bin_size))
 
+    plt.title('Price Histogram - ' + prod)
+    plt.savefig(os.path.join(sub_dir, 'Hist_Prices_' + prod + '.pdf'))
     plt.show()
     plt.clf()
 
@@ -103,9 +105,9 @@ for prod in products:
     plt.plot(x, MV2, label="1/96")
     plt.plot(x, MV3, label="1/1920")
 
-    plt.title("Exponential Moving averages vs price")
+    plt.title("Price and EMA - " + prod)
     plt.ylabel('Exponential moving average')
     plt.xlabel('Time (minutes)')
-
+    plt.savefig(os.path.join(sub_dir, 'Price_EMA_' + prod + '.pdf'))
     plt.show()
     plt.clf()
