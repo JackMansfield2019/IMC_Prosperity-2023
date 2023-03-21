@@ -451,7 +451,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     sell_orders = {price: -sell_orders[price] for price in sell_orders}
     
     # The below code is for changing the spread based on the price trend, which gave less profit
-    '''
+    
     sell_order_list = [price for price in sell_orders]
     buy_order_list = [price for price in buy_orders]
 
@@ -462,11 +462,11 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
 
     if abs(cross_over) > 1:
         print("changing spread")
-        # change_Spread(self, state, cross_over, buy_order_list, sell_order_list)
+        change_Spread(self, state, cross_over, buy_order_list, sell_order_list)
 
     buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_list)}
     sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_list)}
-    '''
+    
 
     for price in buy_orders:
         if buy_orders[price] > 0:
