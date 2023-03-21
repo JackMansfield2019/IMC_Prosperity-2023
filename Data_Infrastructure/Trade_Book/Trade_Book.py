@@ -73,20 +73,6 @@ for i in range(len(trades[-1])):
 fieldnames = ['timestamp', 'buyer', 'seller',
               'symbol', 'currency', 'price', 'quantity']
 
-# for i in range(1, 65):
-#     p = 'Price '
-#     q = 'quantity '
-#     s = 'Trade #: '
-#     s = s + str(i)
-#     p = p + str(i)
-#     q = q + str(i)
-#     fieldnames.append(s)
-#     fieldnames.append(p)
-#     fieldnames.append(q)
-
-
-# for trade in trades:
-#     print(trade)
 
 rows = []
 temp_dict = dict()
@@ -112,20 +98,6 @@ for x, trade in enumerate(trades):
     timestamp += 100
     temp_dict['timestamp'] = timestamp
 
-for i in range(3):
-    # print(trades[i])
-    print(rows[i])
-    # for i, trade in enumerate(trades):
-    #     if i < 2 or trade[0] == '':
-    #         continue
-
-    #     temp_dict[fieldnames[0]] = timestamp
-    #     for j in range(len(trades[i])):
-    #         temp_dict[fieldnames[j+1]] = trades[i][j]
-
-    #     rows.append(temp_dict.copy())
-    #     temp_dict.clear()
-    #     timestamp += 100
 
 with open("Trade_Data_Tutorial.csv", 'w', encoding='UTF8', newline='') as f:
     writer = csv.DictWriter(f, fieldnames=fieldnames)
