@@ -128,8 +128,6 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
     plt.show()
     plt.clf()
 
-<<<<<<< HEAD
-=======
 def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path: str,
     title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
     """
@@ -153,7 +151,6 @@ def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path
     plt.savefig(file_path)
     plt.show()
     plt.clf()
->>>>>>> 288453bc8e75b5d839c25e7dc3d966e4b3dfc751
 
 def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
                       multipliers: List[int] = [12, 96, 1920]) -> None:
@@ -185,8 +182,6 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.show()
     plt.clf()
 
-<<<<<<< HEAD
-=======
 # Bananas: Use dynamic MM vol distribution
 buy_range = (-5, -1)
 sell_range = (1, 5)
@@ -205,7 +200,6 @@ distribution = {**sell_side, **buy_side}
 
 # Print the distribution
 print(distributionToStr(distribution))
->>>>>>> 288453bc8e75b5d839c25e7dc3d966e4b3dfc751
 
 for symbol in trades:
     plotTradePriceHistogram(
