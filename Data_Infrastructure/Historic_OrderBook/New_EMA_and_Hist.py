@@ -3,9 +3,25 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import math
+import sys
 
+if len(sys.argv) != 3:
+    print("Usage:", sys.argv[0], "<input_file> <output_directory>")
+    print("<input_file> is the path to the csv file to read from")
+    print("<output_directory> is the name of the directory to save the plots to")
+    exit()
 
-with open('Combined_HOB.csv', 'r') as csv_file:
+input_file = sys.argv[1]
+sub_dir = sys.argv[2]
+
+if not os.path.exists(input_file):
+    print("Input file does not exist")
+    exit(1)
+
+if not os.path.exists(sub_dir):
+    os.mkdir(sub_dir)
+
+with open(input_file, 'r') as csv_file:
     reader = csv.reader(csv_file)
 
     lines = []
@@ -35,6 +51,8 @@ for prod in products:
     plt.hist(vals, bins=np.arange(Min_bound - Bin_size,
                                   Max_bound + 2 * Bin_size, Bin_size))
 
+    plt.title('Price Histogram - ' + prod)
+    plt.savefig(os.path.join(sub_dir, 'Hist_Prices_' + prod + '.pdf'))
     plt.show()
     plt.clf()
 
@@ -87,9 +105,9 @@ for prod in products:
     plt.plot(x, MV2, label="1/96")
     plt.plot(x, MV3, label="1/1920")
 
-    plt.title("Exponential Moving averages vs price")
+    plt.title("Price and EMA - " + prod)
     plt.ylabel('Exponential moving average')
     plt.xlabel('Time (minutes)')
-
+    plt.savefig(os.path.join(sub_dir, 'Price_EMA_' + prod + '.pdf'))
     plt.show()
     plt.clf()
