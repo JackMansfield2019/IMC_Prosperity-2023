@@ -184,3 +184,23 @@ for prod in products:
     plt.savefig(os.path.join(my_path, "Bid_Ask_Spread_" + prod + ".pdf"))
     plt.show()
     plt.clf()
+    
+     #Plot EMA Slope 
+    EMA_slope = []
+    lookback = 12
+    
+    for a in range(len(MV2)):
+        if a < lookback:
+            EMA_slope.append(0)
+        else:
+            EMA_slope.append((MV2[a] - MV2[a-lookback])/lookback)
+
+    print(len(x))
+    print(len(EMA_slope))
+    plt.plot(x, EMA_slope, label="Spread")
+    plt.title("EMA Slope vs Time - " + prod)
+    plt.ylabel('Price')
+    plt.xlabel('Time (minutes)')
+    plt.savefig(os.path.join(my_path, "EMA_Slope_" + prod + ".pdf")) 
+    plt.show()
+    plt.clf() 
