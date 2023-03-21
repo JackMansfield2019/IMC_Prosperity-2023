@@ -1,15 +1,13 @@
 # Basic utilities for plotting and manipulating data
 
-
-
 import math
 import itertools
 from typing import TypeVar, Dict, List, Tuple
 
 # Add the top-level directory to the path to import the datamodel package
 import sys
-sys.path.append('../../')
-from datamodel import Trade
+sys.path.append('../')
+from datamodel import Trade, Order, Product, Time, Symbol, UserId
 
 T = TypeVar('T')
 
@@ -128,3 +126,103 @@ def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
         distribution[price_level] = price_volumes[price_level]
 
     return distribution
+
+def csvToDict(file_name: str) -> Dict[str, List[str]]:
+    """
+    Parse a csv file and return a dictionary mapping column names to a list of values in that column.
+    
+    Parameters:
+    file_name (str): The name of the file to parse
+    
+    Returns:
+    Dict[str, List[str]]: A dictionary mapping column names to a list of values in that column
+    """
+    # A mapping of products to columns, which are a mapping of column names to a list of values
+    data_dict: Dict[str, List[str]] = {}
+    titles: List[str] = []
+
+    # Open the file
+    with open(file_name, "r") as f:
+        lines = f.readlines()
+        titles = lines.pop(0).strip().split(",")
+        
+        for line in lines:
+            line = line.strip().split(",")
+            assert len(line) == len(titles)
+
+            for c, column in enumerate(line):
+                data_dict.setdefault(titles[c], [])
+                data_dict[titles[c]].append(column)
+                
+    return data_dict
+    
+
+def parseCombinedLOB(file_name: str) -> Dict[Product, List[Tuple[Order, Time]]]:
+    """
+    Parses the combined LOB file and returns a dictionary mapping products to tuples of an
+    order and the timestamp of that order.
+    
+    Parameters:
+    file_name (str): The name of the file to parse
+
+    Returns:
+    A dictionary mapping products to a list of tuples of an order and the timestamp of that order
+    """
+    
+    data_dict = csvToDict(file_name)    
+    line_count = len(data_dict["timestamp"])
+    orders: Dict[Product, List[Tuple[Order, Time]]] = {}
+
+    # Parse the lines
+    for line_num in range(line_count):
+        timestamp: Time = int(float(data_dict["timestamp"][line_num]))
+        product: Product = data_dict["product"][line_num]
+        orders.setdefault(product, [])
+
+        for order_num in range(1, 4):
+            bid_price = data_dict["bid_price_" + str(order_num)][line_num]
+            bid_volume = data_dict["bid_volume_" + str(order_num)][line_num]
+            ask_price = data_dict["ask_price_" + str(order_num)][line_num]
+            ask_volume = data_dict["ask_volume_" + str(order_num)][line_num]
+            
+            if bid_price != "" and bid_volume != "":
+                bid_price = int(float(bid_price))
+                bid_volume = int(float(bid_volume))
+                bid_order = Order(product, bid_price, bid_volume)
+                orders[product].append((bid_order, timestamp))
+                
+            if ask_price != "" and ask_volume != "":
+                ask_price = int(float(ask_price))
+                ask_volume = int(float(ask_volume))
+                ask_order = Order(product, ask_price, ask_volume)
+                orders[product].append((ask_order, timestamp))
+
+    return orders
+
+def parseCombinedTrades(file_name: str) -> Dict[Symbol, List[Trade]]:
+    """
+    Parses the combined trades file and returns a dictionary mapping symbols to a list of trades.
+    
+    Parameters:
+    file_name (str): The name of the file to parse
+    
+    Returns:
+    Dict[Symbol, List[Trade]]: A dictionary mapping symbols to a list of trades
+    """
+    data_dict = csvToDict(file_name)
+    line_count = len(data_dict["timestamp"])
+    trades: Dict[Product, List[Trade]] = {}
+    
+    for line_num in range(line_count):
+        timestamp: Time = int(float(data_dict["timestamp"][line_num]))
+        buyer: UserId = data_dict["buyer"][line_num]
+        seller: UserId = data_dict["seller"][line_num]
+        symbol: Symbol = data_dict["symbol"][line_num]
+        currency: Symbol = data_dict["currency"][line_num]
+        price: int = int(float(data_dict["price"][line_num]))
+        quantity: int = int(float(data_dict["quantity"][line_num]))
+        trade = Trade(symbol, price, quantity, buyer, seller, timestamp)
+        trades.setdefault(symbol, [])
+        trades[symbol].append(trade)
+
+    return trades
