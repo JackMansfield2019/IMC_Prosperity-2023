@@ -428,6 +428,35 @@ def get_EMA_slope(self: Strategy, state: TradingState, L: int) -> float:
     else:
         return (EMA[-1] - EMA[-L])/L
 
+# Get calculated fair price
+def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: float, look_back_period: int) -> float:
+    if max_bid != -1:
+        self.data['max_bids'].append(max_bid)
+        if len(self.data['max_bids']) > look_back_period:
+            self.data['max_bids'].pop(0)
+
+    if min_ask != -1:
+        self.data['min_asks'].append(min_ask)
+        if len(self.data['max_bids']) > look_back_period:
+            self.data['max_bids'].pop(0)
+
+    if len(self.data['max_bids']) > 0:
+        mb_avg = (sum(self.data['max_bids']) / len(self.data['max_bids']))
+    else:
+        mb_avg = -1
+
+    if len(self.data['min_asks']) > 0:
+        ms_avg = (sum(self.data['min_asks']) / len(self.data['min_asks']))
+    else:
+        ms_avg = -1
+
+    if ms_avg >= 0 and mb_avg >= 0:
+        base_price = (ms_avg + mb_avg) / 2.0
+    else:
+        base_price = -1
+
+    return base_price
+
 def BananaStrategy(self: Strategy, state: TradingState) -> None:
     global banana_distribution
 

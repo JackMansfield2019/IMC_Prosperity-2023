@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 
+#change to filename of what you want to graph
+
 with open('MM7_Ask_Bid.txt', 'r') as f:
     l = f.readlines()
 
