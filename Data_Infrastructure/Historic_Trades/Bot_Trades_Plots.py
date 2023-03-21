@@ -5,9 +5,6 @@
 
 # Adapted from dataInfrastructure/Graph_Data/EMA_and_Hist.py
 
-
-from datamodel import Trade, Symbol
-from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
 from typing import Dict, List
 import math
 import matplotlib.pyplot as plt
@@ -18,9 +15,11 @@ import os
 # Add the parent directory to the path to import Plot_Utils
 import sys
 sys.path.append('../')
+from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
 
 # Add the top-level directory to the path to import the datamodel package
 sys.path.append('../../')
+from datamodel import Trade, Symbol
 
 
 sub_dir = input("Input Subdirectory: ")
