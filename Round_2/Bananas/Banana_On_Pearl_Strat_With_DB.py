@@ -523,13 +523,12 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     our_lowest_ask = min(sell_orders.keys())
     
     SLOPE_LOOKBACK = 5
-    SLOPE_THRESHOLD = 1.5
+    SLOPE_THRESHOLD = 0.75
     slope = 0
         
     if len(self.data['bp_history']) > SLOPE_LOOKBACK:
         slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
         
-    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price_raw) + " " + str(slope))
 
     ask_offset = 0
     bid_offset = 0
@@ -538,6 +537,8 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
         ask_offset = 5
     elif slope < -SLOPE_THRESHOLD:
         bid_offset = -5
+
+    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price_raw) + " " + str(slope))
 
     for price in buy_orders:
         if buy_orders[price] > 0:
