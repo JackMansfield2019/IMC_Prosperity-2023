@@ -2,13 +2,13 @@ from typing import Tuple, List
 from math import log
 
 rates = [
-    [1.0, 0.5, 1.45, 0.75],
-    [1.95, 1.0, 3.1, 1.49],
-    [0.67, 0.31, 1.0, 0.48],
-    [1.34, 0.64, 1.98, 1.0],
+    [1.0, 1.98, 0.64, 1.34],
+    [0.48, 1.0, 0.31, 0.67],
+    [1.49, 3.1, 1.0, 1.95],
+    [0.75, 1.45, 0.5, 1.0],
 ]
 
-currencies = ('PIZZA', 'WASABI', 'SNOWBALL', 'SHELLS')
+currencies = ('SHELLS','SNOWBALL','WASABI','PIZZA')
 
 
 def negate_logarithm_convertor(graph: Tuple[Tuple[float]]) -> List[List[float]]:

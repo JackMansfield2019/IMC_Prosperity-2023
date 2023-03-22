@@ -35,7 +35,11 @@ parse_input_string(stringI,timestamp,price)
 
 #change to filename of what you want to graph
 
+<<<<<<< HEAD
 with open('Pure_Shift.log', 'r') as f:
+=======
+with open('MM_Jack_new_slope.txt', 'r') as f:
+>>>>>>> 6aa008b2750a1fc9d32d0ae1f8a8794428fd903d
     l = f.readlines()
 
 # Uncomment if you want to get strat and save to file
