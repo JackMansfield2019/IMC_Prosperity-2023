@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 #change to filename of what you want to graph
 
-with open('MM_Slope5_Off5_Thresh75.log', 'r') as f:
+with open('MM5_Offset5_Thresh75.log', 'r') as f:
     l = f.readlines()
 
 # Uncomment if you want to get strat and save to file
