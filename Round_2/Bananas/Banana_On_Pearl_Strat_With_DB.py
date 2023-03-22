@@ -499,7 +499,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
 
     buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-6, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+6)})
+    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+2, base_price+6)})
     sell_orders = {price: -sell_orders[price] for price in sell_orders}
         
     sell_order_prices = [price for price in sell_orders]
@@ -516,21 +516,37 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
     sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
 
-    SLOPE_LOOKBACK = 5
-    SLOPE_THRESHOLD = 0.75
+    SLOPE_LOOKBACK = 3
+    SLOPE_THRESHOLD = 1.5
     slope = 0
         
     if len(self.data['bp_history']) > SLOPE_LOOKBACK:
         slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
         
-
     ask_offset = 0
     bid_offset = 0
+    # ask_offset = abs(slope(2)) + 1
+    # bid_offset = -abs(slope(2)) - 1
+
+    lim = 0
+    if len(self.data['price_history']) < SLOPE_LOOKBACK:
+        lim = len(self.data['price_history'])
+    else:
+        lim = SLOPE_LOOKBACK
+
+    temp_data = self.data['price_history'][-lim:]
+    avg = 0
+    for x in range(0, len(temp_data)-1):
+        avg += abs(temp_data[x]-temp_data[x+1])
+
+    avg /= lim
+    slope = avg
+    # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
     
     if slope > SLOPE_THRESHOLD:
-        ask_offset = 1
+        ask_offset = 0
     elif slope < -SLOPE_THRESHOLD:
-        bid_offset = -1
+        bid_offset = 0
 
     highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
     lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
