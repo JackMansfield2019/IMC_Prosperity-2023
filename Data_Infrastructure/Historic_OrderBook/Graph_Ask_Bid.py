@@ -23,6 +23,7 @@ our_asks = []
 our_bids = []
 bot_prices = []
 bot_price_slopes = []
+
 for i in range(len(data)):
     temp = [float(x) for x in data[i].split()]
     data[i] = temp[1:]
@@ -33,11 +34,11 @@ for i in range(len(data)):
     bot_prices.append(data[i][4])
     
     BOT_SLOPE_LOOKBACK = 7
-    
+
     if i < BOT_SLOPE_LOOKBACK:
         bot_price_slopes.append(0)
     else:
-        bot_price_slopes.append(data[i][4] - data[-BOT_SLOPE_LOOKBACK][4])
+        bot_price_slopes.append(data[i][4] - data[i-BOT_SLOPE_LOOKBACK][4])
 
 # Plot all the found stuff
 Mid_Prices = []

@@ -1007,7 +1007,3 @@ REPORT RequestId: 9fc8531e-197f-46e3-86b4-9f13a1de51a4	Duration: 2.30 ms	Billed 
 
 
 Submission logs:
-
-
-
-Activities log:

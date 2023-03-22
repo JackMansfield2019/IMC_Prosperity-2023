@@ -481,7 +481,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     gamma = 1
     kappa = getBuySellVol(state.order_depths["BANANAS"],True) + getBuySellVol(state.order_depths["BANANAS"],False)
     #----------------HYPER PARAMETERS----------------
-    S = getMidPrice(self,state)
+    s = getMidPrice(self,state)
     q = state.position["BANANAS"]
     
     lim = 0
