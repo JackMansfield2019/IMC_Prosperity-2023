@@ -1,9 +1,17 @@
-import csv
 import matplotlib.pyplot as plt
 import os
 import numpy as np
 import math
 import sys
+from typing import Dict, List, Tuple
+
+# Add the top-level directory to the path to import the datamodel package
+sys.path.append('../../')
+from datamodel import Order, Product, Time
+
+# Add the parent directory to the path to import Plot_Utils
+sys.path.append('../')
+from Plot_Utils import parseCombinedLOB
 
 if len(sys.argv) != 3:
     print("Usage:", sys.argv[0], "<input_file> <output_directory>")
@@ -21,24 +29,33 @@ if not os.path.exists(input_file):
 if not os.path.exists(sub_dir):
     os.mkdir(sub_dir)
 
-with open(input_file, 'r') as csv_file:
-    reader = csv.reader(csv_file)
+lob_data = parseCombinedLOB(input_file)
+    
+# Track ask and bid orders, map a product to a list of orders and corresponding times
+ask_orders: Dict[Product, List[Tuple[Order, Time]]] = {product: [] for product in lob_data.keys()}
+bid_orders: Dict[Product, List[Tuple[Order, Time]]] = {product: [] for product in lob_data.keys()}
 
-    lines = []
-    for row in reader:
-        lines.append(row)
+for product in lob_data:
+    for time in lob_data[product]:
+        for order in lob_data[product][time][0]:
+            if order.quantity > 0:
+                ask_orders[product].append((order, time))
+            else:
+                bid_orders[product].append((order, time))
 
-fieldnames = lines.pop(0)
+for prod in lob_data:
+    vals: List[float] = []
+    
+    # Combine ask and bid orders
+    for time in lob_data[prod]:
+        largest_order_index = 0
+        
+        for index, order in enumerate(lob_data[prod][time][0]):
+            if abs(order.quantity) > abs(lob_data[prod][time][0][largest_order_index].quantity):
+                largest_order_index = index
+                
+        vals.append(lob_data[prod][time][0][largest_order_index].price)
 
-products = dict()
-for i, line in enumerate(lines):
-    if line[2] not in products:
-        products[line[2]] = []
-    products[line[2]].append(float(line[-2]))
-
-vals = []
-for prod in products:
-    vals = products[prod]
     Set_of_Prices = set(vals)
     Max_bound = max(Set_of_Prices)
     Min_bound = min(Set_of_Prices)
