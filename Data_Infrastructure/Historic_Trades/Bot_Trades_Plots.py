@@ -9,68 +9,41 @@ from typing import Dict, List
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
 import os
+import sys
 
 # Add the parent directory to the path to import Plot_Utils
-import sys
 sys.path.append('../')
-from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution
+from Plot_Utils import normalizeTo, distributionToStr, calcDynamicMMDistribution, parseCombinedLOB, parseCombinedTrades
 
 # Add the top-level directory to the path to import the datamodel package
 sys.path.append('../../')
-from datamodel import Trade, Symbol
+from datamodel import Order, Product, Time, Symbol, Trade
 
+if len(sys.argv) != 4:
+    print("Usage:", sys.argv[0], "<trades_input_file> <lob_input_file> <output_directory>")
+    print("<trades_input_file> is the path to the csv file of the trades")
+    print("<lob_input_file> is the path to the csv file of the limit order book")
+    print("<output_directory> is the name of the directory to save the plots to")
+    exit()
 
-sub_dir = input("Input Subdirectory: ")
+trades_input_file = sys.argv[1]
+lob_input_file = sys.argv[2]
+sub_dir = sys.argv[3]
 
-try:
+if not os.path.exists(trades_input_file):
+    print("Trades input file does not exist")
+    exit(1)
+
+if not os.path.exists(lob_input_file):
+    print("LOB input file does not exist")
+    exit(1)
+
+if not os.path.exists(sub_dir):
     os.mkdir(sub_dir)
-except:
-    print("Path Already exists")
 
-bot_file_name = input("Input Bot Trades File Name: ")
-
-with open(bot_file_name, 'r') as csv_file:
-    reader = csv.reader(csv_file)
-    lines = [line for line in reader]
-    csv_file.close()
-
-# Read each line and put the data into a dictionary
-fieldnames = lines[0]
-rows = []
-temp_dict = dict()
-for i, line in enumerate(lines):
-    if i == 0:
-        continue
-    for j in range(len(fieldnames)):
-        temp_dict[fieldnames[j]] = line[j]
-    rows.append(temp_dict.copy())
-
-trades: Dict[Symbol, List[Trade]] = {}
-
-# Loop through each row, and add the trade to the trades dictionary
-for row in rows:
-    timestamp = int(row['Timestamp'])
-
-    # Loop over each trade in the row
-    for trade_num in range(1, 65):
-        symbol = row['Trade #: ' + str(trade_num)]
-        price = row['Price ' + str(trade_num)]
-        quantity = row['quantity ' + str(trade_num)]
-
-        # Skip this trade if it is empty
-        if symbol is None or price is None or quantity is None or symbol == '' or price == '' or quantity == '':
-            continue
-
-        if symbol not in trades:
-            trades[symbol] = []
-
-        # Create a new trade and add it to the trades dictionary
-        new_trade = Trade(symbol, int(float(price)),
-                          int(quantity), timestamp=timestamp)
-        trades[symbol].append(new_trade)
-
+trades = parseCombinedTrades(trades_input_file)
+lob_data = parseCombinedLOB(lob_input_file)
 
 def plotTradePriceHistogram(trades: List[Trade], symbol: Symbol, file_path: str, bin_extents: int = 4) -> None:
     """
