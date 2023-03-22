@@ -21,6 +21,8 @@ max_bids = []
 min_asks = []
 our_asks = []
 our_bids = []
+bot_prices = []
+bot_price_slopes = []
 for i in range(len(data)):
     temp = [float(x) for x in data[i].split()]
     data[i] = temp[1:]
@@ -28,18 +30,34 @@ for i in range(len(data)):
     min_asks.append(data[i][1])
     our_asks.append(data[i][2])
     our_bids.append(data[i][3])
+    bot_prices.append(data[i][4])
+    
+    BOT_SLOPE_LOOKBACK = 7
+    
+    if i < BOT_SLOPE_LOOKBACK:
+        bot_price_slopes.append(0)
+    else:
+        bot_price_slopes.append(data[i][4] - data[-BOT_SLOPE_LOOKBACK][4])
 
 # Plot all the found stuff
 Mid_Prices = []
 for i in range(len(max_bids)):
     Mid_Prices.append((max_bids[i] + min_asks[i])/2.0)
 
-line1, = plt.plot(Mid_Prices, label='MidPrice')
+fig, ax = plt.subplots()
+
+line1, = ax.plot(Mid_Prices, label='MidPrice')
 # line2, = plt.plot(min_asks, label='Min Bot Ask')
-line3, = plt.plot(our_asks, label='Our Ask')
-line4, = plt.plot(our_bids, label='Our Bid')
-plt.legend(handles=[line1, line3, line4])
-plt.ylabel('Seashells')
+line3, = ax.plot(our_asks, label='Our Ask')
+line4, = ax.plot(our_bids, label='Our Bid')
+line5, = ax.plot(bot_prices, label='Bot Price')
+ax.set_ylabel('Seashells')
+
+ax2 = ax.twinx()
+line6, = ax2.plot(bot_price_slopes, label='Bot Price Slope')
+ax2.set_ylabel('Seashells')
+
+fig.legend(handles=[line1, line3, line4, line5, line6])
 
 # Uncomment for saving file
 # plt.title(strat + ' Graph')
