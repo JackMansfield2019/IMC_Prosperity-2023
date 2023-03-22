@@ -492,14 +492,14 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
-    base_price = int(getFairPrice(self, state, max_bid, min_ask, 7))
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 7)), 0))
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
     self.data['bp_history'].append(base_price_raw)
 
     offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
 
     buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-6, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+2, base_price+6)})
+    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+6)})
     sell_orders = {price: -sell_orders[price] for price in sell_orders}
         
     sell_order_prices = [price for price in sell_orders]
@@ -555,7 +555,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     our_lowest_ask = min(sell_orders.keys()) + ask_offset
     
 
-    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price_raw) + " " + str(slope))
+    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
 
     for price in buy_orders:
         if buy_orders[price] > 0:
