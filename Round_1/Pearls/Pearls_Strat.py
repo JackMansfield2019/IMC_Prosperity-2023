@@ -25,16 +25,16 @@ limits: Dict[Symbol, int] = {
 
 # hard coded frequency distribution for pearls based on the amount of volume traded at that price level
 pearl_distribution: Dict[int,float] = {
-    9995: 0.11952861952861951,
-    9996: 0.32365319865319864,
+    9995: 0.20427428871115774,
+    9996: 0.2702242034876098,
     9997: 0.0,
-    9998: 0.5568181818181819,
+    9998: 0.5255015078012325,
     9999: 0.0,
     10001: 0.0,
-    10002: 0.5455337690631807,
+    10002: 0.5271338603778641,
     10003: 0.0,
-    10004: 0.1803921568627451,
-    10005: 0.2740740740740741,
+    10004: 0.27026664880075035,
+    10005: 0.2025994908213855,
 }
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
