@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 #change to filename of what you want to graph
 
-with open('MM7_Ask_Bid.txt', 'r') as f:
+with open('MM_Jack_Ask_Bid.txt', 'r') as f:
     l = f.readlines()
 
 # Uncomment if you want to get strat and save to file
@@ -43,5 +43,5 @@ plt.ylabel('Seashells')
 
 # Uncomment for saving file
 # plt.title(strat + ' Graph')
-# plt.savefig(file_name, format='png', dpi=1200)
+plt.savefig('Jack_Bid_ask_Graph')
 plt.show()
