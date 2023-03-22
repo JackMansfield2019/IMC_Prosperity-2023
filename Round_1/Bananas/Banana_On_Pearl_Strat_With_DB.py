@@ -165,13 +165,13 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     """
     sortOrderDepth(order_depth)
 
-    #print("Buy Orders:")
-    #for price in order_depth.buy_orders:
-        #print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
+    print("Buy Orders:")
+    for price in order_depth.buy_orders:
+        print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
     
-    #print("Sell Orders:")
-    #for price in order_depth.sell_orders:
-        #print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
+    print("Sell Orders:")
+    for price in order_depth.sell_orders:
+        print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
 
 T = TypeVar('T')
 def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
