@@ -3,6 +3,7 @@
 import math
 import itertools
 from typing import TypeVar, Dict, List, Tuple
+from matplotlib import pyplot as plt
 
 # Add the top-level directory to the path to import the datamodel package
 import sys
@@ -64,8 +65,56 @@ def getMidPrice(trades: List[Trade]) -> float:
     lowest = min(trade.price for trade in trades)
     return (highest + lowest) / 2
 
+def getMidPriceOrders(orders: List[Order]) -> float:
+    highest = max(order.price for order in orders)
+    lowest = min(order.price for order in orders)
+    return (highest + lowest) / 2
 
-def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
+def calcEMA(price: float, ema: float, lookback_period: int) -> float:
+    """
+    """
+    L = 1 / lookback_period
+    
+    if ema == 0:
+        ema = price
+    else:
+        ema = math.exp(-L) * ema + (1-math.exp(-L)) * price
+    
+    return ema
+
+max_bids = []
+min_asks = []
+
+# orders: orders at this time
+def getFairPrice(max_bid: float, min_ask: float, look_back_period: int) -> float:    
+    if max_bid != -1:
+        max_bids.append(max_bid)
+        if len(max_bids) > look_back_period:
+            max_bids.pop(0)
+
+    if min_ask != -1:
+        min_asks.append(min_ask)
+        if len(min_asks) > look_back_period:
+            min_asks.pop(0)
+
+    if len(max_bids) > 0:
+        mb_avg = (sum(max_bids) / len(max_bids))
+    else:
+        mb_avg = -1
+
+    if len(min_asks) > 0:
+        ms_avg = (sum(min_asks) / len(min_asks))
+    else:
+        ms_avg = -1
+
+    if ms_avg >= 0 and mb_avg >= 0:
+        base_price = (ms_avg + mb_avg) / 2.0
+    else:
+        base_price = -1
+
+    return base_price
+
+def calcDynamicMMDistribution(trades: List[Trade], orders: Dict[Time, List[Order]], buy_range: Tuple[int, int],
                               sell_range: Tuple[int, int]) -> Dict[int, float]:
     """
     Calculate a price level distribution based on the trades at each price level. The price level is not constant,
@@ -80,6 +129,9 @@ def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
     Returns:
     Dict[int, float]: A dictionary mapping price differences to the values of the distribution at that level
     """
+    
+    bot_prices = []
+    mid_prices = []
 
     def full_range(): return itertools.chain(
         range(buy_range[0], buy_range[1] + 1), range(sell_range[0], sell_range[1] + 1))
@@ -98,8 +150,14 @@ def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
         time_trades[trade.timestamp].append(trade)
 
     # Loop through each timestamp and count the trades/volume at each price level
-    price = getMidPrice(this_trades)
+    #price = getMidPrice(this_trades)
+    max_bid = 0 #max(order.price for order in orders[0] if order.quantity > 0)
+    min_ask = 0 #min(order.price for order in orders[0] if order.quantity < 0)
+    price = getFairPrice(max_bid, min_ask, 7)
+    
     for timestamp, this_trades in time_trades.items():
+        bot_prices.append(price)
+        mid_prices.append(getMidPrice(this_trades))
         for trade in this_trades:
             # Calculate the price difference
             price_diff = trade.price - price
@@ -115,7 +173,9 @@ def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
             price_volumes.setdefault(price_diff, 0)
             price_volumes[price_diff] += trade.quantity
 
-        price = getMidPrice(this_trades)
+        max_bid = max(order.price for order in orders[timestamp] if order.quantity > 0)
+        min_ask = min(order.price for order in orders[timestamp] if order.quantity < 0)
+        price = getFairPrice(max_bid, min_ask, 7)
 
     distribution: Dict[int, float] = {}
 
@@ -125,6 +185,12 @@ def calcDynamicMMDistribution(trades: List[Trade], buy_range: Tuple[int, int],
         # Edit this line using above data to calculate the distribution
         # Calculate distribution using volume
         distribution[price_level] = price_volumes[price_level]
+        
+    bot_prices.pop(0)
+    plt.plot(bot_prices)
+    plt.plot(mid_prices)
+    plt.legend(['Bot Price', 'Mid Price'])
+    plt.show()    
 
     return distribution
 
@@ -198,7 +264,7 @@ def parseCombinedLOB(file_name: str) -> Dict[Product, Dict[Time, Tuple[List[Orde
             if ask_price != "" and ask_volume != "":
                 ask_price = int(float(ask_price))
                 ask_volume = int(float(ask_volume))
-                ask_order = Order(product, ask_price, ask_volume)
+                ask_order = Order(product, ask_price, -abs(ask_volume))
                 orders.append(ask_order)
                 
         all_data.setdefault(product, {})

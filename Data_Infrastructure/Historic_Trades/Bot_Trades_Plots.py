@@ -157,13 +157,25 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.clf()
 
 
+PROD = "BANANAS"
+
+#mid_prices = [lob_data[PROD][time][1] for time in trades[PROD]]
+
+orders: Dict[Time, List[Order]] = {}
+
+for time in lob_data[PROD]:
+    orders[time] = []
+    
+    for order in lob_data[PROD][time][0]:
+        orders[time].append(order)
+    
 # Bananas: Use dynamic MM vol distribution
-buy_range = (-5, -1)
-sell_range = (1, 5)
-distribution = calcDynamicMMDistribution(
-    trades['BANANAS'], buy_range, sell_range)
-plotMMDistribution(distribution, "BANANS", sub_dir +
-                   "/Bot_MM_Distribution_BANANAS.pdf")
+buy_range = (-7, -1)
+sell_range = (1, 7)
+distribution = calcDynamicMMDistribution(trades[PROD], orders, buy_range, sell_range)
+
+plotMMDistribution(distribution, PROD, sub_dir +
+                   "/Bot_MM_Distribution_" + PROD + ".pdf")
 
 # Normalize distribution
 sell_side = {price_level: volume for price_level, volume in distribution.items()
@@ -177,6 +189,7 @@ distribution = {**sell_side, **buy_side}
 
 # Print the distribution
 print(distributionToStr(distribution))
+exit(0)
 
 for symbol in trades:
     plotTradePriceHistogram(
