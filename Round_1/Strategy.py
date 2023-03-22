@@ -439,7 +439,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     self.data.setdefault('ema_long', 0)
 
     self.data["price_history"].append(getMidPrice(self, state))
-    self.data['ema_short'] = get_EMA(self, state, 12.0, self.data['ema_short'])
+    self.data['ema_short'] = get_EMA(self, state, 9.0, self.data['ema_short'])
     self.data['ema_long'] = get_EMA(self, state, 96.0, self.data['ema_long'])
 
     if self.symbol not in state.position:
