@@ -555,8 +555,9 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     our_lowest_ask = min(sell_orders.keys()) + ask_offset
     
 
-    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
-
+    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    print(base_price)
+    
     for price in buy_orders:
         if buy_orders[price] > 0:
             self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price + bid_offset)

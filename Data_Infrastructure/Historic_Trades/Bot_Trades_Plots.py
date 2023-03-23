@@ -102,7 +102,7 @@ def plotTradePriceVolumeHistogram(trades: List[Trade], symbol: Symbol, file_path
 
 
 def plotMMDistribution(distribution: Dict[int, float], symbol: Symbol, file_path: str,
-                       title: str | None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
+                       title: str or None = None, y_label: str = "Distribution", x_label: str = "Price Level") -> None:
     """
     Plots the distribution of a market making strategy. Saves to a file and shows the plot.
 
