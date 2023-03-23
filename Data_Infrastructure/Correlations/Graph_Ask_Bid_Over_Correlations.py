@@ -7,6 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from typing import List, Tuple
 
 df = pd.read_csv("order_book_data.csv", sep=";")
 
@@ -29,11 +30,6 @@ for i in range(len(coconut_mid_prices)):
         correlation_over_time.append(np.corrcoef(coconut_mid_prices[i-lookback:i], pina_colada_mid_prices[i-lookback:i])[0][1])
     else:
         correlation_over_time.append(0)
-
-plt.plot(correlation_over_time)
-plt.show()
-
-plt.savefig('Correlation_Graph_Over_Time')
 
 
 #change to filename of what you want to graph
@@ -60,21 +56,34 @@ our_bids = []
 bot_prices = []
 bot_price_slopes = []
 
-for i in range(len(data)):
-    temp = [float(x) for x in data[i].split()]
-    data[i] = temp[1:]
-    max_bids.append(data[i][0])
-    min_asks.append(data[i][1])
-    our_asks.append(data[i][2])
-    our_bids.append(data[i][3])
-    bot_prices.append(data[i][4])
-    
-    BOT_SLOPE_LOOKBACK = 7
 
-    if i < BOT_SLOPE_LOOKBACK:
-        bot_price_slopes.append(0)
-    else:
-        bot_price_slopes.append(data[i][4] - data[i-BOT_SLOPE_LOOKBACK][4])
+pina_max_min_mid: List[Tuple[float, float, float]] = []
+coco_max_min_mid: List[Tuple[float, float, float]] = []
+
+for i in range(len(data)):
+    temp = [x for x in data[i].split()]
+    data[i] = temp[1:]
+    
+    print(data[i])
+    print(len(data[i]))
+    coco_max_min_mid.append((float(data[i][1]), float(data[i][2]), ((float(data[i][1]) + float(data[i][2])) / 2) - 7000))
+    pina_max_min_mid.append((float(data[i][8]), float(data[i][9]), (float(data[i][8]) + float(data[i][9])) / 2))
+        
+    #max_bids.append(data[i][0])
+    #min_asks.append(data[i][1])
+    #our_asks.append(data[i][2])
+    #our_bids.append(data[i][3])
+    #bot_prices.append(data[i][4])
+    
+    #BOT_SLOPE_LOOKBACK = 7
+
+    #if i < BOT_SLOPE_LOOKBACK:
+    #    bot_price_slopes.append(0)
+    #else:
+    #    bot_price_slopes.append(data[i][4] - data[i-BOT_SLOPE_LOOKBACK][4])
+
+
+
 
 # Plot all the found stuff
 Mid_Prices = []
@@ -83,18 +92,19 @@ for i in range(len(max_bids)):
 
 fig, ax = plt.subplots()
 
-line1, = ax.plot(Mid_Prices, label='MidPrice')
+line1, = ax.plot([x[2] for x in pina_max_min_mid], label='PINA MidPrice')
+line2, = ax.plot([x[2] for x in coco_max_min_mid], label='COCO MidPrice')
 # line2, = plt.plot(min_asks, label='Min Bot Ask')
-line3, = ax.plot(our_asks, label='Our Ask')
-line4, = ax.plot(our_bids, label='Our Bid')
-line5, = ax.plot(bot_prices, label='Bot Price')
+#line3, = ax.plot(our_asks, label='Our Ask')
+#line4, = ax.plot(our_bids, label='Our Bid')
+#line5, = ax.plot(bot_prices, label='Bot Price')
 ax.set_ylabel('Seashells')
 
 ax2 = ax.twinx()
-line6, = ax2.plot(correlation_over_time, label='PnL')
+line6, = ax2.plot(correlation_over_time, label='Correlation')
 ax2.set_ylabel('Correlation')
 
-fig.legend(handles=[line1, line3, line4, line5, line6])
+fig.legend(handles=[line1, line2, line6])
 print(len(bot_prices))
 print(len(correlation_over_time))
 # Uncomment for saving file
