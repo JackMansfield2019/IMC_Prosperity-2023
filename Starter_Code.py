@@ -294,10 +294,7 @@ class Strategy:
 
         max_new = self.maxNewPosition(current_position, buy)
         
-        if buy:
-            quantity = min(abs(quantity), abs(max_new))
-        else:
-            quantity = -min(abs(quantity), abs(max_new))
+        quantity = min(abs(quantity), abs(max_new))
 
         # make sure the order depth is sorted
         sortOrderDepth(order_depth_after_mkt_orders)
@@ -305,9 +302,9 @@ class Strategy:
         # we will go through the lowest sell orders for a buy, and the highest buy orders for a sell
         orders = None
         if buy:
-            orders = order_depth_after_mkt_orders.sell_orders
+            orders = order_depth_after_mkt_orders.sell_orders.copy()
         else:
-            orders = order_depth_after_mkt_orders.buy_orders
+            orders = order_depth_after_mkt_orders.buy_orders.copy()
 
         volume_filled = 0
         remaining_quantity = 0
@@ -318,15 +315,20 @@ class Strategy:
             
             for price in orders:
 
-                volume_filled += orders[price]
+                volume_filled += abs(orders[price])
 
                 # Note: if there aren't enough orders to fill the quantity, we will fill as many as we can
                 if volume_filled >= quantity:
-                    remaining_quantity = quantity - (volume_filled - orders[price])
+                    remaining_quantity = quantity - (volume_filled - abs(orders[price]))
 
-                    new_orders.append(Order(self.symbol, price, remaining_quantity))
+                    if buy:
+                        new_orders.append(Order(self.symbol, price, abs(remaining_quantity)))
+                        print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                    else:
+                        new_orders.append(Order(self.symbol, price, -abs(remaining_quantity)))
+                        print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
 
-                    if remaining_quantity == orders[price]: # if the final order to be placed is the same size as the 
+                    if remaining_quantity == abs(orders[price]): # if the final order to be placed is the same size as the 
                         # matching order in the order book, we can just delete the order from the order book, otherwise, 
                         # we remove (from that order) the remaining quantity we need to fill
                         if buy:
@@ -335,13 +337,18 @@ class Strategy:
                             del order_depth_after_mkt_orders.buy_orders[price]
                     else:
                         if buy:
-                            order_depth_after_mkt_orders.sell_orders[price] -= remaining_quantity
+                            order_depth_after_mkt_orders.sell_orders[price] += remaining_quantity
                         else:
                             order_depth_after_mkt_orders.buy_orders[price] -= remaining_quantity
                     break
                 else: # delete orders from our order book as we fill them
 
-                    new_orders.append(Order(self.symbol, price, orders[price]))
+                    if buy:
+                        new_orders.append(Order(self.symbol, price, abs(orders[price])))
+                        print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
+                    else:
+                        new_orders.append(Order(self.symbol, price, -abs(orders[price])))
+                        print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
 
                     if buy:
                         del order_depth_after_mkt_orders.sell_orders[price]
