@@ -31,16 +31,8 @@ pearl_distribution: Dict[int,float] = {
 }
 
 banana_distribution: Dict[int, float] = {
-    -5: 0.023024268823895456,
-    -4: 0.07871810827629122,
-    -3: 0.17361543248288736,
-    -2: 0.30118232731798383,
-    -1: 0.4234598630989421,
-    5: 0.023024268823895456,
-    4: 0.07871810827629122,
-    3: 0.17361543248288736,
-    2: 0.30118232731798383,
-    1: 0.4234598630989421,
+    -1: 1,
+    1: 1
 }
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
@@ -379,25 +371,31 @@ class Strategy:
 
         return new_orders
 
-def market_making_pearls_strategy(self: Strategy, state: TradingState) -> None:
-    global pearl_distribution
+def add_EMA(self: Strategy, state: TradingState, L: float, EMA: list[float]):
+    '''
+    Function returns the current EMA
+    if EMA == 0:
+        set EMA to last midprice
+    else:
+        EMA = e^(-L) * EMA + (1 - e^(-L)) * Current_Mid_Price
+    '''
+    L_use = (1.0/L)
+    if len(EMA) == 0:
+        EMA.append(self.data['price_history'][-1])
+    else:
+        # prev = self.EMA_short
+        EMA.append(math.exp(-L_use)*EMA[-1] + (1-math.exp(-L_use))*self.data['price_history'][-1])
 
-    if self.symbol not in state.position:
-        state.position[self.symbol] = 0
+def get_EMA_slope(self: Strategy, state: TradingState, L: int) -> float:
+    '''
+    Function returns the slope of the EMA
+    '''
+    EMA = self.data['ema_long']
 
-    max_buy = self.maxNewPosition(state.position[self.symbol], True)
-    max_sell = self.maxNewPosition(state.position[self.symbol], False)
-    
-    buy_orders = distributeValue(max_buy, {price: pearl_distribution[price] for price in range(9999, 9994, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: pearl_distribution[price] for price in range(10001, 10006)})
-    sell_orders = {price: -sell_orders[price] for price in sell_orders}
-    
-    for price in buy_orders:
-        if buy_orders[price] > 0:
-            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price)
-    for price in sell_orders:
-        if sell_orders[price] < 0:
-            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
+    if len(EMA) < L:
+        return 0
+    else:
+        return (EMA[-1] - EMA[-L])/L
 
 def getMidPrice(self: Strategy, state: TradingState) -> float:
     Order_Depth = state.order_depths[self.symbol]
@@ -419,51 +417,160 @@ def getMidPrice(self: Strategy, state: TradingState) -> float:
 
     return float(max_bid + min_ask) / 2.0
 
-
-def get_EMA(self: Strategy, state: TradingState, L: float, EMA: float) -> float:
-    L_use = (1.0/L)
-    if EMA == 0:
-        EMA = self.data['price_history'][-1]
-    else:
-        # prev = self.EMA_short
-        EMA = math.exp(-L_use)*EMA + (1-math.exp(-L_use))*self.data['price_history'][-1]
-
-    return EMA
-
-
-def BananaStrategy(self: Strategy, state: TradingState) -> None:
-    global banana_distribution
-
-    self.data.setdefault("price_history", [])
-    self.data.setdefault('ema_short', 0)
-    self.data.setdefault('ema_long', 0)
-
-    self.data["price_history"].append(getMidPrice(self, state))
-    self.data['ema_short'] = get_EMA(self, state, 12.0, self.data['ema_short'])
-    self.data['ema_long'] = get_EMA(self, state, 96.0, self.data['ema_long'])
+def market_making_pearls_strategy(self: Strategy, state: TradingState) -> None:
+    global pearl_distribution
 
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
 
-    print("current position:", state.position[self.symbol])
-
     max_buy = self.maxNewPosition(state.position[self.symbol], True)
     max_sell = self.maxNewPosition(state.position[self.symbol], False)
-
-    base_price = int(self.data['ema_short'])
-
-    offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
-
-    buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-6, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+6)})
+    
+    buy_orders = distributeValue(max_buy, {price: pearl_distribution[price] for price in range(9999, 9994, -1)})
+    sell_orders = distributeValue(abs(max_sell), {price: pearl_distribution[price] for price in range(10001, 10006)})
     sell_orders = {price: -sell_orders[price] for price in sell_orders}
-
+    
     for price in buy_orders:
         if buy_orders[price] > 0:
             self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price)
     for price in sell_orders:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
+
+# Get calculated fair price
+def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: float, look_back_period: int) -> float:
+    if max_bid != -1:
+        self.data['max_bids'].append(max_bid)
+        if len(self.data['max_bids']) > look_back_period:
+            self.data['max_bids'].pop(0)
+
+    if min_ask != -1:
+        self.data['min_asks'].append(min_ask)
+        if len(self.data['min_asks']) > look_back_period:
+            self.data['min_asks'].pop(0)
+
+    if len(self.data['max_bids']) > 0:
+        mb_avg = (sum(self.data['max_bids']) / len(self.data['max_bids']))
+    else:
+        mb_avg = -1
+
+    if len(self.data['min_asks']) > 0:
+        ms_avg = (sum(self.data['min_asks']) / len(self.data['min_asks']))
+    else:
+        ms_avg = -1
+
+    if ms_avg >= 0 and mb_avg >= 0:
+        base_price = (ms_avg + mb_avg) / 2.0
+    else:
+        base_price = -1
+
+    return base_price
+
+def BananaStrategy(self: Strategy, state: TradingState) -> None:
+    global banana_distribution
+
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("bp_history", [])
+    self.data.setdefault('ema_short', [])
+    self.data.setdefault('ema_long', [])
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+
+    self.data["price_history"].append(getMidPrice(self, state))
+    add_EMA(self, state, 9.0, self.data['ema_short'])
+    add_EMA(self, state, 96.0, self.data['ema_long'])
+
+    # used to calculate price trend in order to determine how to change spread
+    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
+
+    ema_slope = get_EMA_slope(self, state, 12)
+
+    #print("cross_over:", cross_over)
+    #print("ema_slope:", ema_slope)
+
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    #print("current position:", state.position[self.symbol])
+
+    max_buy = self.maxNewPosition(state.position[self.symbol], True)
+    max_sell = self.maxNewPosition(state.position[self.symbol], False)
+
+    max_bid = max(state.order_depths[self.symbol].buy_orders)
+    min_ask = min(state.order_depths[self.symbol].sell_orders)
+
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 7)), 0))
+    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
+    self.data['bp_history'].append(base_price_raw)
+
+    offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
+
+    buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-2, -1)})
+    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+2)})
+    sell_orders = {price: -sell_orders[price] for price in sell_orders}
+        
+    sell_order_prices = [price for price in sell_orders]
+    buy_order_prices = [price for price in buy_orders]
+
+    buy_order_volumes = [buy_orders[price] for price in buy_orders]
+    sell_order_volumes = [sell_orders[price] for price in sell_orders]
+
+    #if abs(ema_slope) > 0:
+        #print("changing spread")
+    #    change_Spread(self, state, ema_crossover, buy_order_prices, sell_order_prices)
+        #^^^change the spread to directionally bet based on an indicator
+
+    buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
+    sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
+
+    SLOPE_LOOKBACK = 3
+    SLOPE_THRESHOLD = 1.5
+    slope = 0
+        
+    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
+        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
+        
+    ask_offset = 0
+    bid_offset = 0
+    # ask_offset = abs(slope(2)) + 1
+    # bid_offset = -abs(slope(2)) - 1
+
+    lim = 0
+    if len(self.data['price_history']) < SLOPE_LOOKBACK:
+        lim = len(self.data['price_history'])
+    else:
+        lim = SLOPE_LOOKBACK
+
+    temp_data = self.data['price_history'][-lim:]
+    avg = 0
+    for x in range(0, len(temp_data)-1):
+        avg += abs(temp_data[x]-temp_data[x+1])
+
+    avg /= lim
+    slope = avg
+    # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
+    
+    if slope > SLOPE_THRESHOLD:
+        ask_offset = 0
+    elif slope < -SLOPE_THRESHOLD:
+        bid_offset = 0
+
+    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+
+    our_highest_bid = max(buy_orders.keys()) + bid_offset
+    our_lowest_ask = min(sell_orders.keys()) + ask_offset
+    
+
+    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    print(base_price)
+    
+    for price in buy_orders:
+        if buy_orders[price] > 0:
+            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price + bid_offset)
+    for price in sell_orders:
+        if sell_orders[price] < 0:
+            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price + ask_offset)
 
 
 # Strategies to run
