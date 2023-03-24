@@ -5,12 +5,11 @@ import matplotlib.pyplot as plt
 import datetime
 import os
 
-Cookie_id_token = 'eyJraWQiOiJ4M3NhZjFZTkNsRGwyVDljemdCR01ybnVVMlJlNDNjb1E1UGxYMWgwb2tBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI5ZDg2ZmJmZC00MGViLTRjY2UtYTExNS03ODYyYWFkMDVhN2MiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmV1LXdlc3QtMS5hbWF6b25hd3MuY29tXC9ldS13ZXN0LTFfek9mVngwcWl3IiwiY29nbml0bzp1c2VybmFtZSI6IjlkODZmYmZkLTQwZWItNGNjZS1hMTE1LTc4NjJhYWQwNWE3YyIsIm9yaWdpbl9qdGkiOiJkMDFjODNjNy0zYTZiLTQyZGItOTFmZC1hOThkYTc4NDAxNWIiLCJhdWQiOiIzMmM1ZGM1dDFrbDUxZWRjcXYzOWkwcjJzMiIsImV2ZW50X2lkIjoiZTQyMmZmMGUtMzFlNy00YjlkLTg5ZWYtNWVjZmZjZTdmMjhkIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2Nzc2MjkyODMsImV4cCI6MTY3OTUyNDAyNSwiaWF0IjoxNjc5NTIwNDI1LCJqdGkiOiJjOTc4ZWQ1OC03ZGFhLTQ5YjUtYWQzMC0wYzZkODc1YzkyMjUiLCJlbWFpbCI6InJ5YW5jcml2QGdtYWlsLmNvbSJ9.ebpH7coMoL0LUjp20UBYF4fdtcclHiGZb4siSnCm0bK8ZSfxWo5T7o2aDmjfMOD6CJ9Z4nZAkdtO3RljE2BQdO6UtiSktz33tPNWVLkcgDWicLbFyGXWlmau6QnOodJjUUy80xneXO96y8CkCmtIptsn8I0-hNMp8nlPOxKLhgp5jY-a9Ps-7976k1Ke-maOEvfHJBEMlMDGpxuB8rtCY8zKqG4oTbyjJBPwdJckv2A88kQUGwME7HDRpbEHZjeKtZ8ggr53-V2XtCfZxq9lg1Az4Wph0S82zu4FWYPKC68ZqtcnFlhpzHea0RAxxeQPFQtG4alqMtYV3F31h9w_fQ'
-Log_file_name = '55b43b62-432d-4b7a-baca-b7a2f0fa6934'
+Cookie_id_token = 'eyJraWQiOiJ4M3NhZjFZTkNsRGwyVDljemdCR01ybnVVMlJlNDNjb1E1UGxYMWgwb2tBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJhMzFlOTg5Mi02MTVlLTQ3ZjQtOGZmZS1hM2M0MTkyYjUzMmIiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmV1LXdlc3QtMS5hbWF6b25hd3MuY29tXC9ldS13ZXN0LTFfek9mVngwcWl3IiwiY29nbml0bzp1c2VybmFtZSI6ImEzMWU5ODkyLTYxNWUtNDdmNC04ZmZlLWEzYzQxOTJiNTMyYiIsIm9yaWdpbl9qdGkiOiI4OWMzZDNjNy0yMGNmLTQ3YzQtODRlOC1mNjhlYmMxNDFlMmMiLCJhdWQiOiIzMmM1ZGM1dDFrbDUxZWRjcXYzOWkwcjJzMiIsImV2ZW50X2lkIjoiODY3MjlhZDYtZDZlNS00ZTJkLTkyYmUtNDdmYzY0YTNkZjQ4IiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2Nzc2MTQzOTYsImV4cCI6MTY3OTY0MDcwNywiaWF0IjoxNjc5NjM3MTA3LCJqdGkiOiJjNjM5NmExZC1jNjU0LTQ0ZDMtYmE2Zi01NzQ3Zjg2MTVjZTEiLCJlbWFpbCI6ImphY2subWFuc2ZpZWxkQGxpdmUuY29tIn0.CF6eN2Y46fI_wc8tyKf0bCkVce73ulYvyyCboQrmGN3h1308xTbliUxSjBa_HbU6i04zVSW6XLen1HzXo4ifBEQlkTaj2UAwVuIpwAO0qC-Q70foH_nE7zrMxdQ1QUjJCZ-rEg__rcnG0oCdRJBGN0tzj-1YeUY-SyeqPc-8Q171wm61pbZzGfMeDcJaFU7K4i5Ci6S7XN9Q4hhcqvjRyxPEcrKmZ3qjbN_rLa8xXLDFlNK0gehYKcJHIyb518MSUQ0HUgg_HQDDduxUfwc-Qus6rVP9FJCa5G4pSev_Evmdh7Q4rB0ZqzEBTGQ_iJeiNzlRJj1Xylb4aGS7WtgIJA'
+Log_file_name = 'bbf16834-e07a-4407-ab80-9a135751ff7b'
 headers = {
     'authorization': 'Bearer '+ Cookie_id_token,
 }
-
 Response = requests.get(
     f'https://bz97lt8b1e.execute-api.eu-west-1.amazonaws.com/prod/results/tutorial/{Log_file_name}',
     headers = headers,
@@ -35,7 +34,7 @@ parse_input_string(stringI,timestamp,price)
 
 #change to filename of what you want to graph
 
-with open('Fixed_Base_Price.log', 'r') as f:
+with open('bbf16834-e07a-4407-ab80-9a135751ff7b.log', 'r') as f:
     l = f.readlines()
 
 # Uncomment if you want to get strat and save to file
@@ -88,10 +87,12 @@ line5, = ax.plot(bot_prices, label='Bot Price')
 ax.set_ylabel('Seashells')
 
 ax2 = ax.twinx()
-line6, = ax2.plot(price, label='PnL')
+line6, = ax2.plot(bot_price_slopes, label='Slope', color='purple')
+ax3 = ax.twinx()
+line7, = ax3.plot(price, label='PnL', color='yellow')
 ax2.set_ylabel('Seashells')
 
-fig.legend(handles=[line1, line3, line4, line5, line6])
+fig.legend(handles=[line1, line3, line4, line5, line6, line7])
 print(len(bot_prices))
 print(len(price))
 # Uncomment for saving file

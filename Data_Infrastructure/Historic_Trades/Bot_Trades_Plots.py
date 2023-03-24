@@ -157,7 +157,7 @@ def plotTradePriceEMA(trades: List[Trade], symbol: Symbol, file_path: str,
     plt.clf()
 
 
-PROD = "BANANAS"
+PROD = "COCONUTS"
 
 #mid_prices = [lob_data[PROD][time][1] for time in trades[PROD]]
 
