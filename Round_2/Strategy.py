@@ -1,6 +1,7 @@
 # Combined Strategy for Bananas and Pearls
 
 import math
+import numpy as np
 
 from typing import Dict, List, Callable, Any, TypeVar
 from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
@@ -343,10 +344,7 @@ class Strategy:
 
         max_new = self.maxNewPosition(current_position, buy)
         
-        if buy:
-            quantity = min(abs(quantity), abs(max_new))
-        else:
-            quantity = -min(abs(quantity), abs(max_new))
+        quantity = min(abs(quantity), abs(max_new))
 
         # make sure the order depth is sorted
         sortOrderDepth(order_depth_after_mkt_orders)
@@ -354,9 +352,9 @@ class Strategy:
         # we will go through the lowest sell orders for a buy, and the highest buy orders for a sell
         orders = None
         if buy:
-            orders = order_depth_after_mkt_orders.sell_orders
+            orders = order_depth_after_mkt_orders.sell_orders.copy()
         else:
-            orders = order_depth_after_mkt_orders.buy_orders
+            orders = order_depth_after_mkt_orders.buy_orders.copy()
 
         volume_filled = 0
         remaining_quantity = 0
@@ -367,15 +365,20 @@ class Strategy:
             
             for price in orders:
 
-                volume_filled += orders[price]
+                volume_filled += abs(orders[price])
 
                 # Note: if there aren't enough orders to fill the quantity, we will fill as many as we can
                 if volume_filled >= quantity:
-                    remaining_quantity = quantity - (volume_filled - orders[price])
+                    remaining_quantity = quantity - (volume_filled - abs(orders[price]))
 
-                    new_orders.append(Order(self.symbol, price, remaining_quantity))
+                    if buy:
+                        new_orders.append(Order(self.symbol, price, abs(remaining_quantity)))
+                        print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                    else:
+                        new_orders.append(Order(self.symbol, price, -abs(remaining_quantity)))
+                        print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
 
-                    if remaining_quantity == orders[price]: # if the final order to be placed is the same size as the 
+                    if remaining_quantity == abs(orders[price]): # if the final order to be placed is the same size as the 
                         # matching order in the order book, we can just delete the order from the order book, otherwise, 
                         # we remove (from that order) the remaining quantity we need to fill
                         if buy:
@@ -384,13 +387,18 @@ class Strategy:
                             del order_depth_after_mkt_orders.buy_orders[price]
                     else:
                         if buy:
-                            order_depth_after_mkt_orders.sell_orders[price] -= remaining_quantity
+                            order_depth_after_mkt_orders.sell_orders[price] += remaining_quantity
                         else:
                             order_depth_after_mkt_orders.buy_orders[price] -= remaining_quantity
                     break
                 else: # delete orders from our order book as we fill them
 
-                    new_orders.append(Order(self.symbol, price, orders[price]))
+                    if buy:
+                        new_orders.append(Order(self.symbol, price, abs(orders[price])))
+                        print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
+                    else:
+                        new_orders.append(Order(self.symbol, price, -abs(orders[price])))
+                        print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
 
                     if buy:
                         del order_depth_after_mkt_orders.sell_orders[price]
@@ -826,13 +834,141 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
 
+def add_MACD(self: Strategy, state: TradingState, L: float, MACD: list[float], MACD_signal: list[float]):
+    '''
+    Function returns the current MACD and MACD_signal
+    MACD = EMA_short - EMA_long
+    MACD_signal = e^(-L) * MACD_signal + (1 - e^(-L)) * MACD
+    '''
+    L_use = (1.0/L)
+    MACD.append(self.data['ema_short'][-1] - self.data['ema_long'][-1])
+    if len(MACD_signal) == 0:
+        MACD_signal.append(MACD[-1])
+    else:
+        MACD_signal.append(math.exp(-L_use)*MACD_signal[-1] + (1-math.exp(-L_use))*MACD[-1])
+
+def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
+    Order_Depth = state.order_depths[symbol]
+    Buy_Orders = Order_Depth.buy_orders
+    max_bid = -1
+    for key in Buy_Orders:
+        if key > max_bid:
+            max_bid = key
+
+    min_ask = -1
+    Sell_Orders = Order_Depth.sell_orders
+    for key in Sell_Orders:
+        if min_ask < 0:
+            min_ask = key
+            continue
+
+        if key < min_ask:
+            min_ask = key
+
+    return float(max_bid + min_ask) / 2.0
+
+# The pairs trading strategy will also take in a symbol for the correlating product
+def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol: Symbol) -> None:
+    
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+        
+    order_depth_after_mkt_orders = state.order_depths[self.symbol]
+
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("correlating_product_price_history", [])
+    self.data.setdefault("correlation_hist", [])
+    self.data.setdefault("in_trade", False)
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+    self.data.setdefault('bp_history', [])
+    self.data.setdefault('ema_short', [])
+    self.data.setdefault('ema_long', [])
+    self.data.setdefault('macd', [])
+    self.data.setdefault('macd_signal', [])
+
+    self.data['price_history'].append(getMidPriceTS(state, self.symbol))
+    self.data['correlating_product_price_history'].append(getMidPriceTS(state, correlating_symbol))
+
+    add_EMA(self, state, 12, self.data['ema_short'])
+    add_EMA(self, state, 26, self.data['ema_long'])
+    add_MACD(self, state, 9, self.data['macd'], self.data['macd_signal'])
+
+    CORRELATION_LOOKBACK = 26
+
+    correlation = np.corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
+    self.data["correlation_hist"].append(correlation)
+    
+    max_bid = max(state.order_depths[self.symbol].buy_orders)
+    min_ask = min(state.order_depths[self.symbol].sell_orders)
+
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 7)), 0))
+    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
+    self.data['bp_history'].append(base_price_raw)
+
+    UPPER_CORR_THRESHOLD = 0.7
+    #CORR_LOOKBACK_THRESHOLD = 0.85
+    LOWER_CORR_THRESHOLD = 0.0
+    #SLOPE_THRESHOLD = 0.0
+
+    print("symbol", self.symbol)
+
+    print("printing order depth for this product")    
+    printOrderDepth(state.order_depths[self.symbol])
+    print("printing order depth for correlating product")
+    printOrderDepth(state.order_depths[correlating_symbol])
+    print("current position", state.position[self.symbol])
+    print("product mid price", getMidPriceTS(state, self.symbol), "product mid price length", len(self.data["price_history"]))
+    print("correlating product mid price", getMidPriceTS(state, correlating_symbol), "correlating product mid price length", len(self.data["correlating_product_price_history"]))
+    print("correlation", correlation)
+    if correlation != 0:
+        if correlation < LOWER_CORR_THRESHOLD and not self.data["in_trade"]:
+            
+            # this is for if we want to use a correlation threshold to see how far to look back to determine price trend, currently using MACD and not using a slope
+            '''
+            last_above_upper_idx = 1
+            for i, old_corr in enumerate(reversed(self.data["correlation_hist"])):
+                if old_corr >= CORR_LOOKBACK_THRESHOLD:
+                    last_above_upper_idx = -i
+                    break
+                elif 0 < last_above_upper_idx < len( self.data["correlation_hist"]) and old_corr > self.data["correlation_hist"][last_above_upper_idx]:
+                    last_above_upper_idx = -i
+            '''
+
+            #last_above_upper_idx = -26
+
+            # this is for if we want to use the slope to determine price trend, currently using MACD
+            #if last_above_upper_idx < 0:
+                #price_slope = (self.data["bp_history"][-1] - self.data["bp_history"][last_above_upper_idx]) / -last_above_upper_idx
+
+            if self.data['macd'][-1] > 0:
+                print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and macd", self.data['macd'][-1])
+                self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], False, 9999999)
+            elif self.data['macd'][-1] < 0:
+                print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and macd", self.data['macd'][-1])
+                self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], True, 9999999)
+                
+            self.data["in_trade"] = True
+                    
+        elif correlation > UPPER_CORR_THRESHOLD:
+            self.data["in_trade"] = False
+            
+        if not self.data["in_trade"] and state.position[self.symbol] != 0:
+            if state.position[self.symbol] > 0:
+                print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
+            else:
+                print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
+            self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], state.position[self.symbol] < 0, state.position[self.symbol])
+
 
 # Strategies to run
 strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
     #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
-    Strategy("COCONUTS", 600, CocoStrategy),
+    Strategy("COCONUTS", 300, CocoStrategy),
+    Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
+	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
 ]
 
 class Trader:
