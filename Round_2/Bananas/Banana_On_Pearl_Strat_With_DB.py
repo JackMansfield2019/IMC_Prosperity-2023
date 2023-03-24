@@ -17,18 +17,8 @@ products: Dict[Product, Symbol] = {}
 symbols: Dict[Symbol, Product] = {}
 
 banana_distribution: Dict[int, float] = {
-        -6: 0.06410549584571995,
-        -5: 0.14696242091622838,
-        -4: 0.22478847473130573,
-        -3: 0.24430215717661408,
-        -2: 0.16662855400564067,
-        -1: 0.13110755392941534,
-        1: 0.16736401673640167,
-        2: 0.20678754067875407,
-        3: 0.24490934449093446,
-        4: 0.198326359832636,
-        5: 0.1196652719665272,
-        6: 0.04797768479776848,
+    -1: 1,
+    1: 1
 }
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
@@ -498,8 +488,8 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
 
     offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
 
-    buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-6, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+6)})
+    buy_orders = distributeValue(max_buy, {price: offset_banana_distribution[price] for price in range(base_price-1, base_price-2, -1)})
+    sell_orders = distributeValue(abs(max_sell), {price: offset_banana_distribution[price] for price in range(base_price+1, base_price+2)})
     sell_orders = {price: -sell_orders[price] for price in sell_orders}
         
     sell_order_prices = [price for price in sell_orders]
