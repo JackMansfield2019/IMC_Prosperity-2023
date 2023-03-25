@@ -8,13 +8,72 @@ import numpy
 import statistics
 import math
 import typing
+import json
 
 from typing import Dict, List, Callable, Any, TypeVar
-from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
+from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position, ProsperityEncoder
 
 # Dictionaries for converting between products and symbols
 products: Dict[Product, Symbol] = {}
 symbols: Dict[Symbol, Product] = {}
+
+# Coco_distribution: Dict[int, float] = {
+#         -7: 0.12764321414840446,
+#         -6: 0.1262334999359221,
+#         -5: 0.14661027809816737,
+#         -4: 0.1569909009355376,
+#         -3: 0.1503267973856209,
+#         -2: 0.1710880430603614,
+#         -1: 0.12110726643598616,
+#         1: 0.1824115424252834,
+#         2: 0.1719912973777625,
+#         3: 0.15424252834077637,
+#         4: 0.18985457460208405,
+#         5: 0.10626359784724608,
+#         6: 0.11233253177602198,
+#         7: 0.0829039276308256,
+# }
+Coco_distribution: Dict[int, float] = {
+        -6: 0.06410549584571995,
+        -5: 0.14696242091622838,
+        -4: 0.22478847473130573,
+        -3: 0.24430215717661408,
+        -2: 0.16662855400564067,
+        -1: 0.13110755392941534,
+        1: 0.16736401673640167,
+        2: 0.20678754067875407,
+        3: 0.24490934449093446,
+        4: 0.198326359832636,
+        5: 0.1196652719665272,
+        6: 0.04797768479776848,
+}
+# Coco_distribution: Dict[int, float] = {
+#         -4: 0.05,
+#         -3: 0.15,
+#         -2: 0.3,
+#         -1: 0.5,
+#         1: 0.5,
+#         2: 0.3,
+#         3: 0.15,
+#         4: 0.05,
+# }
+class Logger:
+    def __init__(self) -> None:
+        self.logs = ""
+
+    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
+        self.logs += sep.join(map(str, objects)) + end
+
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
+        print(json.dumps({
+            "state": state,
+            "orders": orders,
+            "logs": self.logs,
+        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
+
+        self.logs = ""
+
+logger = Logger()
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
@@ -150,21 +209,21 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     """
     sortOrderDepth(order_depth)
 
-    print("Buy Orders:")
-    for price in order_depth.buy_orders:
-        print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
+    #print("Buy Orders:")
+    #for price in order_depth.buy_orders:
+        #print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
     
-    print("Sell Orders:")
-    for price in order_depth.sell_orders:
-        print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
+    #print("Sell Orders:")
+    #for price in order_depth.sell_orders:
+        #print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
 
 T = TypeVar('T')
 def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
     """
     Distributes the given value among the given probabilities. The probabilities are given as a dictionary
-    of any type to a float, which represents the distribution probability of that type. The returned dictionary
+    of any type to a float, which represents the Coco_distribution probability of that type. The returned dictionary
     will map the supplied types to integers, which represent the amount of the value that should be distributed
-    into that bucket. The distribution will be rounded down, and the remaining value will be distributed
+    into that bucket. The Coco_distribution will be rounded down, and the remaining value will be distributed
     into the **lowest probability buckets**.
     
     Parameters:
@@ -172,7 +231,7 @@ def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
     probabilities (Dict[T, float]): The probabilities of each bucket.
     
     Returns:
-    Dict[T, int]: The distribution of the value among the buckets.
+    Dict[T, int]: The Coco_distribution of the value among the buckets.
     """
     # Distribute the value into the buckets, rounding down
     values: Dict[T, int] = {p: math.floor(value * probabilities[p]) for p in probabilities}
@@ -261,6 +320,11 @@ class Strategy:
         Returns:
         (Order): The order that is to be placed.
         """
+
+        #if buy:
+            #print("Adding buy order for " + str(quantity) + " at " + str(price))
+        #else:
+            #print("Adding sell order for " + str(quantity) + " at " + str(price))
         
         max_new = self.maxNewPosition(current_position, buy)
         
@@ -323,10 +387,10 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(remaining_quantity)))
-                        print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                        #print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(remaining_quantity)))
-                        print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                        #print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
 
                     if remaining_quantity == abs(orders[price]): # if the final order to be placed is the same size as the 
                         # matching order in the order book, we can just delete the order from the order book, otherwise, 
@@ -345,10 +409,10 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(orders[price])))
-                        print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
+                        #print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(orders[price])))
-                        print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
+                        #print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
 
                     if buy:
                         del order_depth_after_mkt_orders.sell_orders[price]
@@ -359,33 +423,284 @@ class Strategy:
 
         return new_orders
 
-def basic_tunable_strategy(self: Strategy, state: TradingState) -> None:
-    """
-    Below is the format for how to make your tunable parameters for the Param Optimizer.
-    NOTE: You must keep each parameter 4 spaces away from the left margin
-    NOTE: #PARAMS and #ENDPARAMS must be on their own lines and must surround the tunable parameters
-    NOTE: You must also update the params list in the blast submission function to include these tunable parameters
-    NOTE: Have nothing but the parameter name, matching the name in the params list, equal to some base value
-    NOTE: It is recommended to also print the value of each parameter in the strategy function
-    """
-    #PARAMS
-    BUY_QUANTITY = 1
-    #ENDPARAMS
+def getMidPrice(self: Strategy, state: TradingState) -> float:
+    Order_Depth = state.order_depths[self.symbol]
+    Buy_Orders = Order_Depth.buy_orders
+    max_bid = -1
+    for key in Buy_Orders:
+        if key > max_bid:
+            max_bid = key
 
-    print("BUY_QUANTITY:", BUY_QUANTITY)
+    min_ask = -1
+    Sell_Orders = Order_Depth.sell_orders
+    for key in Sell_Orders:
+        if min_ask < 0:
+            min_ask = key
+            continue
+
+        if key < min_ask:
+            min_ask = key
+
+    return float(max_bid + min_ask) / 2.0
+
+def add_EMA(self: Strategy, state: TradingState, L: float, EMA: list[float]):
+    '''
+    Function returns the current EMA
+    if EMA == 0:
+        set EMA to last midprice
+    else:
+        EMA = e^(-L) * EMA + (1 - e^(-L)) * Current_Mid_Price
+    '''
+    L_use = (1.0/L)
+    if len(EMA) == 0:
+        EMA.append(self.data['price_history'][-1])
+    else:
+        # prev = self.EMA_short
+        EMA.append(math.exp(-L_use)*EMA[-1] + (1-math.exp(-L_use))*self.data['price_history'][-1])
+
+def change_Spread(self: Strategy, state: TradingState, indicator: float,
+                  bid_prices: List[int], ask_prices: List[int]) -> None:
+
+    base_price = self.data['ema_short'][-1]
+
+    if indicator > 0:
+        for i, price in enumerate(ask_prices):
+            ask_prices[i] = (base_price + (price - base_price) * 2)
+    elif indicator < 0:
+        for i, price in enumerate(bid_prices):
+            bid_prices[i] = max((base_price - (base_price - price) * 2), 1)
+
+def get_EMA_slope(self: Strategy, state: TradingState, L: int) -> float:
+    '''
+    Function returns the slope of the EMA
+    '''
+    EMA = self.data['ema_long']
+
+    if len(EMA) < L:
+        return 0
+    else:
+        return (EMA[-1] - EMA[-L])/L
+
+# Get calculated fair price
+def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: float, look_back_period: int) -> float:
+    if max_bid != -1:
+        self.data['max_bids'].append(max_bid)
+        if len(self.data['max_bids']) > look_back_period:
+            self.data['max_bids'].pop(0)
+
+    if min_ask != -1:
+        self.data['min_asks'].append(min_ask)
+        if len(self.data['min_asks']) > look_back_period:
+            self.data['min_asks'].pop(0)
+
+    if len(self.data['max_bids']) > 0:
+        mb_avg = (sum(self.data['max_bids']) / len(self.data['max_bids']))
+    else:
+        mb_avg = -1
+
+    if len(self.data['min_asks']) > 0:
+        ms_avg = (sum(self.data['min_asks']) / len(self.data['min_asks']))
+    else:
+        ms_avg = -1
+
+    if ms_avg >= 0 and mb_avg >= 0:
+        base_price = (ms_avg + mb_avg) / 2.0
+    else:
+        base_price = -1
+
+    return base_price
+
+'''
+ALGO:
+market make
+
+peak 0: 4001.5
+peak 1: 3937
+peak 2: 3951
+
+
+Market Cycles:
+0 - 150k short
+
+Rising:
+370k - 500k
+380k - 500k
+300k - 500k
+
+Peak: 500k
+
+downtrend:
+500k - 700k
+500k - 700k
+500k - 650k
+
+uptrend:
+750K
+700k:
+770K
+
+normal after 800k
+
+IDEAS:
+submit long/short only
+check its profitability
+
+add in other market cycles
+check its profitability 
+
+add in market making when not actively in a market cycle
+check its profitability 
+
+market make 100% of the time with directional betting
+
+what do i want to see:
+
+Pnl overlayed on top of mayberries graph
+where / how much im market buying/ selling
+check the order book to see if orber book imbalance is a thing
+abverage size of the order book(qs and qb)
+how long it takes to enter / exit a postion
+
+
+Strategy1:
+if at time < 150k and price > 3.9k 
+    short 
+if time 150k - 370k:
+    market make
+if time: 370 - 500:
+    buy
+if time 500k - 700k:
+    short
+if time 700k - 1M:
+    market make:
+
+Configs i want to test:
+1.  350 - 500 buy
+    500 - 750 sell
+'''
+def BerryStrategy(self: Strategy, state: TradingState) -> None:
+    order_depth_after_mkt_orders = state.order_depths[self.symbol]
+
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("bp_history", [])
+    self.data.setdefault('ema_short', [])
+    self.data.setdefault('ema_long', [])
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+
+    self.data["price_history"].append(getMidPrice(self, state))
+    add_EMA(self, state, 7.0, self.data['ema_short'])
+    add_EMA(self, state, 96.0, self.data['ema_long'])
+
+    # used to calculate price trend in order to determine how to change spread
+    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
+
+    ema_slope = get_EMA_slope(self, state, 12)
+
+    #print("cross_over:", cross_over)
+    #print("ema_slope:", ema_slope)
 
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
 
-    order_depth_after_mkt_orders = state.order_depths[self.symbol]
+    #print("current position:", state.position[self.symbol])
 
-    if state.timestamp == 0:
-        self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], True, BUY_QUANTITY)
+    max_buy = self.maxNewPosition(state.position[self.symbol], True)
+    max_sell = self.maxNewPosition(state.position[self.symbol], False)
+
+    max_bid = max(state.order_depths[self.symbol].buy_orders)
+    min_ask = min(state.order_depths[self.symbol].sell_orders)
+
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 1)), 0))
+    # base_price = int(round(self.data['ema_short'][-1]), 0)
+    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
+    self.data['bp_history'].append(base_price_raw)
+    ask_price = base_price + 1
+    bid_price = base_price - 1
+
+    sell_orders = {ask_price : max_sell}
+    buy_orders = {bid_price : max_buy}
+
+    #======================SLOPE======================
+    SLOPE_LOOKBACK = 3
+    SLOPE_THRESHOLD = 0.65
+    slope = 0
+        
+    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
+        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
+        
+    ask_offset = 0
+    bid_offset = 0
+
+    lim = 0
+    if len(self.data['price_history']) < SLOPE_LOOKBACK:
+        lim = len(self.data['price_history'])
+    else:
+        lim = SLOPE_LOOKBACK
+
+    temp_data = self.data['price_history'][-lim:]
+    avg = 0
+    for x in range(0, len(temp_data)-1):
+        avg += temp_data[x]-temp_data[x+1]
+
+    avg /= lim
+    slope = avg
+    # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
+    
+    if slope > SLOPE_THRESHOLD:
+        ask_offset = 0
+    elif slope < -SLOPE_THRESHOLD:
+        bid_offset = 0
+
+    #======================Market Cycle======================
+    '''
+    if at time < 150k and price > 3.9k 
+        short 
+    if time 150k - 370k:
+        market make
+    if time: 370 - 500:
+        buy
+    if time 500k - 700k:
+        short
+    if time 700k - 1M:
+        market make:
+    '''
+    if (state.timestamp % 100000 < 15000 and getMidPrice(self, state) > 3900):
+        self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], False, 9999999)
+    if (state.timestamp % 100000 > 37000 and state.timestamp % 100000 < 49975):
+        self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], True, 9999999)
+    if (state.timestamp % 100000 > 49975 and state.timestamp % 100000 < 70000):
+        self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], False, 9999999)
+
+    #======================Printing======================
+
+    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+
+    our_highest_bid = max(buy_orders.keys()) + bid_offset
+    our_lowest_ask = min(sell_orders.keys()) + ask_offset
+
+
+    #print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    # print(base_price)
+    # mid_price = (highest_bid + lowest_ask) / 2.0
+    # print(mid_price)
+    
+    #======================Limit orders======================
+    '''
+    for price in buy_orders:
+        if buy_orders[price] > 0:
+            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], bid_price + bid_offset)
+    for price in sell_orders:
+        if sell_orders[price] < 0:
+            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
+    '''
+
 
 
 # Strategies to run
 strategies: List[Strategy] = [
-    Strategy("PEARLS", 20, basic_tunable_strategy)
+    Strategy("BERRIES", 250, BerryStrategy)
 ]
 
 class Trader:
@@ -406,5 +721,7 @@ class Trader:
         global strategies
         for strategy in strategies:
             result[strategy.product] = strategy.run(state)
+
+        logger.flush(state,result)
         
         return result
