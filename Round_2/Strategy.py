@@ -2,9 +2,10 @@
 
 import math
 import numpy as np
+import json
 
 from typing import Dict, List, Callable, Any, TypeVar
-from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
+from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position, ProsperityEncoder
 
 # Dictionaries for converting between products and symbols
 products: Dict[Product, Symbol] = {}
@@ -65,6 +66,24 @@ pina_distribution: Dict[int, float] = {
         5: 0.1196652719665272,
         6: 0.04797768479776848,
 }
+
+class Logger:
+    def __init__(self) -> None:
+        self.logs = ""
+
+    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
+        self.logs += sep.join(map(str, objects)) + end
+
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
+        print(json.dumps({
+            "state": state,
+            "orders": orders,
+            "logs": self.logs,
+        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
+
+        self.logs = ""
+
+logger = Logger()
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
@@ -200,14 +219,15 @@ def printOrderDepth(order_depth: OrderDepth) -> None:
     """
     sortOrderDepth(order_depth)
 
-    print("Buy Orders:")
+    # print("Buy Orders:")
     for price in order_depth.buy_orders:
-        print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
+        # print("Price: " + str(price) + " Volume: " + str(order_depth.buy_orders[price]))
+        continue
     
-    print("Sell Orders:")
+    # print("Sell Orders:")
     for price in order_depth.sell_orders:
-        print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
-
+        # print("Price: " + str(price) + " Volume: " + str(order_depth.sell_orders[price]))
+        continue
 T = TypeVar('T')
 def distributeValue(value: int, probabilities: Dict[T, float]) -> Dict[T, int]:
     """
@@ -373,10 +393,10 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(remaining_quantity)))
-                        print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                        # print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(remaining_quantity)))
-                        print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
+                        # print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
 
                     if remaining_quantity == abs(orders[price]): # if the final order to be placed is the same size as the 
                         # matching order in the order book, we can just delete the order from the order book, otherwise, 
@@ -395,10 +415,10 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(orders[price])))
-                        print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
+                        # print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(orders[price])))
-                        print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
+                        # print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
 
                     if buy:
                         del order_depth_after_mkt_orders.sell_orders[price]
@@ -474,6 +494,10 @@ def market_making_pearls_strategy(self: Strategy, state: TradingState) -> None:
     for price in sell_orders:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
+
+# def getVolatility(state: TradingState, self: Strategy) -> float:
+#     prices = self.data['price_history']
+#     avg = (float(sum(prices))/len(prices))
 
 # Get calculated fair price
 def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: float, look_back_period: int) -> float:
@@ -601,7 +625,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     
 
     # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
-    print(base_price)
+    # print(base_price)
     
     for price in buy_orders:
         if buy_orders[price] > 0:
@@ -625,9 +649,9 @@ def pinaStrategy(self: Strategy, state: TradingState) -> None:
     add_EMA(self, state, 96.0, self.data['ema_long'])
 
     # used to calculate price trend in order to determine how to change spread
-    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
+    # ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
 
-    ema_slope = get_EMA_slope(self, state, 12)
+    # ema_slope = get_EMA_slope(self, state, 12)
 
     #print("cross_over:", cross_over)
     #print("ema_slope:", ema_slope)
@@ -643,12 +667,16 @@ def pinaStrategy(self: Strategy, state: TradingState) -> None:
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
-    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 1)), 0))
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
     # base_price = int(round(self.data['ema_short'][-1]), 0)
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
     self.data['bp_history'].append(base_price_raw)
-    ask_price = base_price + 2
-    bid_price = base_price - 2
+    if state.timestamp < 50000:
+        ask_price = base_price + 2
+        bid_price = base_price - 2
+    else: 
+        ask_price = base_price + 3
+        bid_price = base_price - 3
 
     offset_pina_distribution = {price + base_price: pina_distribution[price] for price in pina_distribution}
 
@@ -670,46 +698,46 @@ def pinaStrategy(self: Strategy, state: TradingState) -> None:
     buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
     sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
 
-    SLOPE_LOOKBACK = 3
-    SLOPE_THRESHOLD = 0.65
-    slope = 0
+    # SLOPE_LOOKBACK = 3
+    # SLOPE_THRESHOLD = 0.65
+    # slope = 0
         
-    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
-        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
+    # if len(self.data['bp_history']) > SLOPE_LOOKBACK:
+    #     slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
         
     ask_offset = 0
     bid_offset = 0
     # ask_offset = abs(slope(2)) + 1
     # bid_offset = -abs(slope(2)) - 1
 
-    lim = 0
-    if len(self.data['price_history']) < SLOPE_LOOKBACK:
-        lim = len(self.data['price_history'])
-    else:
-        lim = SLOPE_LOOKBACK
+    # lim = 0
+    # if len(self.data['price_history']) < SLOPE_LOOKBACK:
+    #     lim = len(self.data['price_history'])
+    # else:
+    #     lim = SLOPE_LOOKBACK
 
-    temp_data = self.data['price_history'][-lim:]
-    avg = 0
-    for x in range(0, len(temp_data)-1):
-        avg += temp_data[x]-temp_data[x+1]
+    # temp_data = self.data['price_history'][-lim:]
+    # avg = 0
+    # for x in range(0, len(temp_data)-1):
+    #     avg += temp_data[x]-temp_data[x+1]
 
-    avg /= lim
-    slope = avg
+    # avg /= lim
+    # slope = avg
     # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
     
-    if slope > SLOPE_THRESHOLD:
-        ask_offset = 0
-    elif slope < -SLOPE_THRESHOLD:
-        bid_offset = 0
+    # if slope > SLOPE_THRESHOLD:
+    #     ask_offset = 0
+    # elif slope < -SLOPE_THRESHOLD:
+    #     bid_offset = 0
 
-    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
-    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+    # highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    # lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
 
-    our_highest_bid = max(buy_orders.keys()) + bid_offset
-    our_lowest_ask = min(sell_orders.keys()) + ask_offset
+    # our_highest_bid = max(buy_orders.keys()) + bid_offset
+    # our_lowest_ask = min(sell_orders.keys()) + ask_offset
 
 
-    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
     # print(base_price)
     # mid_price = (highest_bid + lowest_ask) / 2.0
     # print(mid_price)
@@ -720,8 +748,6 @@ def pinaStrategy(self: Strategy, state: TradingState) -> None:
     for price in sell_orders:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
-
-
 
 def CocoStrategy(self: Strategy, state: TradingState) -> None:
     global Coco_distribution
@@ -738,9 +764,9 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     add_EMA(self, state, 96.0, self.data['ema_long'])
 
     # used to calculate price trend in order to determine how to change spread
-    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
+    # ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
 
-    ema_slope = get_EMA_slope(self, state, 12)
+    # ema_slope = get_EMA_slope(self, state, 12)
 
     #print("cross_over:", cross_over)
     #print("ema_slope:", ema_slope)
@@ -756,12 +782,12 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
-    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 1)), 0))
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
     # base_price = int(round(self.data['ema_short'][-1]), 0)
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
     self.data['bp_history'].append(base_price_raw)
-    ask_price = base_price + 2
-    bid_price = base_price - 2
+    ask_price = base_price + 1
+    bid_price = base_price - 1
 
     offset_Coco_distribution = {price + base_price: Coco_distribution[price] for price in Coco_distribution}
 
@@ -783,46 +809,46 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
     sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
 
-    SLOPE_LOOKBACK = 3
-    SLOPE_THRESHOLD = 0.65
-    slope = 0
+    # SLOPE_LOOKBACK = 3
+    # SLOPE_THRESHOLD = 0.65
+    # slope = 0
         
-    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
-        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
+    # if len(self.data['bp_history']) > SLOPE_LOOKBACK:
+    #     slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
         
     ask_offset = 0
     bid_offset = 0
     # ask_offset = abs(slope(2)) + 1
     # bid_offset = -abs(slope(2)) - 1
 
-    lim = 0
-    if len(self.data['price_history']) < SLOPE_LOOKBACK:
-        lim = len(self.data['price_history'])
-    else:
-        lim = SLOPE_LOOKBACK
+    # lim = 0
+    # if len(self.data['price_history']) < SLOPE_LOOKBACK:
+    #     lim = len(self.data['price_history'])
+    # else:
+    #     lim = SLOPE_LOOKBACK
 
-    temp_data = self.data['price_history'][-lim:]
-    avg = 0
-    for x in range(0, len(temp_data)-1):
-        avg += temp_data[x]-temp_data[x+1]
+    # temp_data = self.data['price_history'][-lim:]
+    # avg = 0
+    # for x in range(0, len(temp_data)-1):
+    #     avg += temp_data[x]-temp_data[x+1]
 
-    avg /= lim
-    slope = avg
+    # avg /= lim
+    # slope = avg
     # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
     
-    if slope > SLOPE_THRESHOLD:
-        ask_offset = 0
-    elif slope < -SLOPE_THRESHOLD:
-        bid_offset = 0
+    # if slope > SLOPE_THRESHOLD:
+    #     ask_offset = 0
+    # elif slope < -SLOPE_THRESHOLD:
+    #     bid_offset = 0
 
-    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
-    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+    # highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    # lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
 
-    our_highest_bid = max(buy_orders.keys()) + bid_offset
-    our_lowest_ask = min(sell_orders.keys()) + ask_offset
+    # our_highest_bid = max(buy_orders.keys()) + bid_offset
+    # our_lowest_ask = min(sell_orders.keys()) + ask_offset
 
 
-    print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
     # print(base_price)
     # mid_price = (highest_bid + lowest_ask) / 2.0
     # print(mid_price)
@@ -869,6 +895,14 @@ def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
 
 # The pairs trading strategy will also take in a symbol for the correlating product
 def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol: Symbol) -> None:
+    '''
+    MM with spread 3
+    if (corr < thresh)
+        if (pina > 1.875 * coco)
+            lower bid
+        else
+            raise ask
+    '''
     
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
@@ -897,6 +931,7 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     CORRELATION_LOOKBACK = 26
 
     correlation = np.corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
+    
     self.data["correlation_hist"].append(correlation)
     
     max_bid = max(state.order_depths[self.symbol].buy_orders)
@@ -906,58 +941,37 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
     self.data['bp_history'].append(base_price_raw)
 
-    UPPER_CORR_THRESHOLD = 0.7
-    #CORR_LOOKBACK_THRESHOLD = 0.85
+    UPPER_CORR_THRESHOLD = 0.0
     LOWER_CORR_THRESHOLD = 0.0
-    #SLOPE_THRESHOLD = 0.0
 
-    print("symbol", self.symbol)
-
-    print("printing order depth for this product")    
-    printOrderDepth(state.order_depths[self.symbol])
-    print("printing order depth for correlating product")
-    printOrderDepth(state.order_depths[correlating_symbol])
-    print("current position", state.position[self.symbol])
-    print("product mid price", getMidPriceTS(state, self.symbol), "product mid price length", len(self.data["price_history"]))
-    print("correlating product mid price", getMidPriceTS(state, correlating_symbol), "correlating product mid price length", len(self.data["correlating_product_price_history"]))
-    print("correlation", correlation)
+    # print("symbol", self.symbol)
+    # print("printing order depth for this product")    
+    # printOrderDepth(state.order_depths[self.symbol])
+    # print("printing order depth for correlating product")
+    # printOrderDepth(state.order_depths[correlating_symbol])
+    # print("current position", state.position[self.symbol])
+    # print("product mid price", getMidPriceTS(state, self.symbol), "product mid price length", len(self.data["price_history"]))
+    # print("correlating product mid price", getMidPriceTS(state, correlating_symbol), "correlating product mid price length", len(self.data["correlating_product_price_history"]))
+    # print("correlation", correlation)
     if correlation != 0:
-        if correlation < LOWER_CORR_THRESHOLD and not self.data["in_trade"]:
-            
-            # this is for if we want to use a correlation threshold to see how far to look back to determine price trend, currently using MACD and not using a slope
-            '''
-            last_above_upper_idx = 1
-            for i, old_corr in enumerate(reversed(self.data["correlation_hist"])):
-                if old_corr >= CORR_LOOKBACK_THRESHOLD:
-                    last_above_upper_idx = -i
-                    break
-                elif 0 < last_above_upper_idx < len( self.data["correlation_hist"]) and old_corr > self.data["correlation_hist"][last_above_upper_idx]:
-                    last_above_upper_idx = -i
-            '''
-
-            #last_above_upper_idx = -26
-
-            # this is for if we want to use the slope to determine price trend, currently using MACD
-            #if last_above_upper_idx < 0:
-                #price_slope = (self.data["bp_history"][-1] - self.data["bp_history"][last_above_upper_idx]) / -last_above_upper_idx
-
-            if self.data['macd'][-1] > 0:
-                print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and macd", self.data['macd'][-1])
-                self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], False, 9999999)
-            elif self.data['macd'][-1] < 0:
-                print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and macd", self.data['macd'][-1])
-                self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], True, 9999999)
+        if correlation < LOWER_CORR_THRESHOLD and not self.data["in_trade"]:            
+            if self.data['price_history'][-1] > 1.875 * self.data['correlcorrelating_product_price_history'][-1]:
+                bid_price = bid_price - 1
+            else:
+                ask_price = ask_price + 1
                 
             self.data["in_trade"] = True
                     
         elif correlation > UPPER_CORR_THRESHOLD:
             self.data["in_trade"] = False
             
-        if not self.data["in_trade"] and state.position[self.symbol] != 0:
-            if state.position[self.symbol] > 0:
-                print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
-            else:
-                print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
+        if not self.data["in_trade"]:
+            # if state.position[self.symbol] > 0:
+            #     # print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
+            #     continue
+            # else:
+            #     # print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
+            #     continue
             self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], state.position[self.symbol] < 0, state.position[self.symbol])
 
 
@@ -966,9 +980,10 @@ strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
     #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
-    Strategy("COCONUTS", 300, CocoStrategy),
-    Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
-	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
+    Strategy("COCONUTS", 600, CocoStrategy),
+    Strategy("PINA_COLADAS", 300, pinaStrategy)
+    # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
+	# Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
 ]
 
 class Trader:
@@ -989,5 +1004,7 @@ class Trader:
         global strategies
         for strategy in strategies:
             result[strategy.product] = strategy.run(state)
-        
+
+        logger.flush(state,result)
+
         return result

@@ -514,7 +514,7 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     self.data.setdefault('min_asks', [])
 
     self.data["price_history"].append(getMidPrice(self, state))
-    add_EMA(self, state, 4.0, self.data['ema_short'])
+    add_EMA(self, state, 9.0, self.data['ema_short'])
     add_EMA(self, state, 96.0, self.data['ema_long'])
 
     # used to calculate price trend in order to determine how to change spread
@@ -563,8 +563,8 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
     sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
 
-    SLOPE_LOOKBACK = 3
-    SLOPE_THRESHOLD = 0.65
+    SLOPE_LOOKBACK = get_EMA_slope(self,state,9)
+    SLOPE_THRESHOLD = 0.6
     slope = 0
         
     if len(self.data['bp_history']) > SLOPE_LOOKBACK:
@@ -591,9 +591,10 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
     
     if slope > SLOPE_THRESHOLD:
-        ask_offset = 0
+        ask_offset = 2
     elif slope < -SLOPE_THRESHOLD:
-        bid_offset = 0
+        bid_offset = -2
+    
 
     highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
     lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())

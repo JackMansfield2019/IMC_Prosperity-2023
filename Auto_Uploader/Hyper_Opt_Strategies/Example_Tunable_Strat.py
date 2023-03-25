@@ -8,13 +8,32 @@ import numpy
 import statistics
 import math
 import typing
+import json
 
 from typing import Dict, List, Callable, Any, TypeVar
-from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position
+from datamodel import OrderDepth, TradingState, Order, Listing, Product, Symbol, Position, ProsperityEncoder
 
 # Dictionaries for converting between products and symbols
 products: Dict[Product, Symbol] = {}
 symbols: Dict[Symbol, Product] = {}
+
+class Logger:
+    def __init__(self) -> None:
+        self.logs = ""
+
+    def print(self, *objects: Any, sep: str = " ", end: str = "\n") -> None:
+        self.logs += sep.join(map(str, objects)) + end
+
+    def flush(self, state: TradingState, orders: dict[Symbol, list[Order]]) -> None:
+        print(json.dumps({
+            "state": state,
+            "orders": orders,
+            "logs": self.logs,
+        }, cls=ProsperityEncoder, separators=(",", ":"), sort_keys=True))
+
+        self.logs = ""
+
+logger = Logger()
 
 def makeProductSymbolDicts(listings: Dict[Symbol, Listing]) -> None:
     """
@@ -407,4 +426,6 @@ class Trader:
         for strategy in strategies:
             result[strategy.product] = strategy.run(state)
         
+        logger.flush(state,result)
+
         return result
