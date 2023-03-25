@@ -36,6 +36,9 @@ def upload_file(file_path: str, file_name: str, auth_token: str) -> Tuple[int, s
     file_path (str): The path to the file to upload.
     file_name (str): The name of the file to upload. This is the name that will be displayed on the IMC website.
     auth_token (str): The authentication token to use for the upload.
+    
+    Returns:
+    Tuple[int, str]: A tuple containing the response code and the response from the IMC API.
     """
     # Read file
     file_content = open(file_path).read()
