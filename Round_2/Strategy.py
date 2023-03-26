@@ -860,8 +860,8 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     ask_price = base_price + 3
     bid_price = base_price - 3
 
-    UPPER_CORR_THRESHOLD = 0.25
-    LOWER_CORR_THRESHOLD = 0.25
+    UPPER_CORR_THRESHOLD = 0.7
+    LOWER_CORR_THRESHOLD = 0.1
 
     # print("symbol", self.symbol)
     # print("printing order depth for this product")    
