@@ -676,6 +676,7 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     self.data.setdefault("in_trade", False)
     self.data.setdefault('max_bids', [])
     self.data.setdefault('min_asks', [])
+    self.data.setdefault('directional_flag', False)
 
     self.data['price_history'].append(getMidPriceTS(state, self.symbol))
     self.data['correlating_product_price_history'].append(getMidPriceTS(state, correlating_symbol))
@@ -695,23 +696,44 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     LOWER_CORR_THRESHOLD = 0.1
 
     if correlation != 0:
-        if correlation < LOWER_CORR_THRESHOLD:            
+        if correlation < LOWER_CORR_THRESHOLD:   
             if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
+                self.data['directional_flag'] = True
                 bid_price = bid_price - 1
                 ask_price = ask_price - 1
+                
+                if not self.data['directional_flag']:
+                    self.addLimitOrder(state.position[self.symbol], False, 100, bid_price)
+                    self.data['directional_flag'] = True
+
             else:
                 ask_price = ask_price + 1
                 bid_price = bid_price + 1
+                
+                if not self.data['directional_flag']:
+                    self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
+                    self.data['directional_flag'] = True
+
+                    
             self.data["in_trade"] = True          
         elif self.data['in_trade']:
             if correlation < UPPER_CORR_THRESHOLD:
                 if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
                     bid_price = bid_price - 1
                     ask_price = ask_price - 1
+                    
                 else:
                     bid_price = bid_price + 1
                     ask_price = ask_price + 1
             else:
+                if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
+                    if self.data['directional_flag']:
+                        self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
+                        self.data['directional_flag'] = False
+                else:
+                    if not self.data['directional_flag']:
+                        self.addLimitOrder(state.position[self.symbol], False, 100, bid_price)
+                        self.data['directional_flag'] = False
                 self.data['in_trade'] = False
 
         self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
