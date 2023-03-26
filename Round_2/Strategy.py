@@ -860,8 +860,8 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     ask_price = base_price + 3
     bid_price = base_price - 3
 
-    UPPER_CORR_THRESHOLD = 0.5
-    LOWER_CORR_THRESHOLD = 0.5
+    UPPER_CORR_THRESHOLD = 0.25
+    LOWER_CORR_THRESHOLD = 0.25
 
     # print("symbol", self.symbol)
     # print("printing order depth for this product")    
@@ -876,15 +876,18 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
         if correlation < LOWER_CORR_THRESHOLD:            
             if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
                 bid_price = bid_price - 1
+                ask_price = ask_price - 1
             else:
                 ask_price = ask_price + 1
-                
+                bid_price = bid_price + 1
             self.data["in_trade"] = True          
         elif self.data['in_trade']:
             if correlation < UPPER_CORR_THRESHOLD:
                 if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
                     bid_price = bid_price - 1
+                    ask_price = ask_price - 1
                 else:
+                    bid_price = bid_price + 1
                     ask_price = ask_price + 1
             else:
                 self.data['in_trade'] = False
@@ -905,7 +908,7 @@ strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
     #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
-    # Strategy("COCONUTS", 600, CocoStrategy),
+    Strategy("COCONUTS", 600, CocoStrategy),
     # Strategy("PINA_COLADAS", 300, pinaStrategy)
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS"))
