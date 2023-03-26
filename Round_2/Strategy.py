@@ -937,6 +937,155 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
         self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
         self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
 
+def BerryStrategy(self: Strategy, state: TradingState) -> None:
+    order_depth_after_mkt_orders = state.order_depths[self.symbol]
+
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("bp_history", [])
+    self.data.setdefault('ema_short', [])
+    self.data.setdefault('ema_long', [])
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+
+    self.data["price_history"].append(getMidPrice(self, state))
+    add_EMA(self, state, 7.0, self.data['ema_short'])
+    add_EMA(self, state, 96.0, self.data['ema_long'])
+
+    # used to calculate price trend in order to determine how to change spread
+    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
+
+    ema_slope = get_EMA_slope(self, state, 12)
+
+    #print("cross_over:", cross_over)
+    #print("ema_slope:", ema_slope)
+
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    #print("current position:", state.position[self.symbol])
+
+    max_buy = self.maxNewPosition(state.position[self.symbol], True)
+    max_sell = self.maxNewPosition(state.position[self.symbol], False)
+
+    max_bid = max(state.order_depths[self.symbol].buy_orders)
+    min_ask = min(state.order_depths[self.symbol].sell_orders)
+
+    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 1)), 0))
+    # base_price = int(round(self.data['ema_short'][-1]), 0)
+    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
+    self.data['bp_history'].append(base_price_raw)
+    ask_price = base_price + 2
+    bid_price = base_price - 2
+
+    sell_orders = {ask_price : max_sell}
+    buy_orders = {bid_price : max_buy}
+
+    #======================SLOPE======================
+    SLOPE_LOOKBACK = 3
+    SLOPE_THRESHOLD = 0.65
+    slope = 0
+        
+    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
+        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
+        
+    ask_offset = 0
+    bid_offset = 0
+
+    lim = 0
+    if len(self.data['price_history']) < SLOPE_LOOKBACK:
+        lim = len(self.data['price_history'])
+    else:
+        lim = SLOPE_LOOKBACK
+
+    temp_data = self.data['price_history'][-lim:]
+    avg = 0
+    for x in range(0, len(temp_data)-1):
+        avg += temp_data[x]-temp_data[x+1]
+
+    avg /= lim
+    slope = avg
+    # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
+    
+    if slope > SLOPE_THRESHOLD:
+        ask_offset = 0
+    elif slope < -SLOPE_THRESHOLD:
+        bid_offset = 0
+
+    #======================Market Cycle======================
+    '''
+    if at time < 150k and price > 3.9k 
+        short 
+    if time 150k - 370k:
+        market make
+    if time: 370 - 500:
+        buy
+    if time 500k - 700k:
+        short
+    if time 700k - 1M:
+        market make:
+    '''
+    
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders) if len(state.order_depths[self.symbol].sell_orders) > 0 else 0
+    highest_bid = max(state.order_depths[self.symbol].buy_orders) if len(state.order_depths[self.symbol].buy_orders) > 0 else 0
+    
+    #if (state.timestamp % 1000000 < 150000 and getMidPrice(self, state) > 3900):
+    #    if highest_bid > 0:
+    #        self.addLimitOrder(state.position[self.symbol], False, 100, highest_bid)
+    #
+    #    bid_offset = -1
+    #    ask_offset = 0
+    
+    do_mm = False
+            
+    if (state.timestamp % 1000000 > 350000 and state.timestamp % 1000000 < 500000):
+        if lowest_ask > 0:
+            self.addLimitOrder(state.position[self.symbol], True, 100, lowest_ask)
+        
+        bid_offset = 0
+        ask_offset = 0
+        
+    elif (state.timestamp % 1000000 > 500000 and state.timestamp % 1000000 < 700000):
+        if highest_bid > 0:
+            self.addLimitOrder(state.position[self.symbol], False, 100, highest_bid)
+        
+        ask_offset = -1
+        bid_offset = 0
+        
+    else:  
+        if lowest_ask > 0 and state.position[self.symbol] < 0:
+            self.addLimitOrder(state.position[self.symbol], True, -state.position[self.symbol], lowest_ask)
+        elif highest_bid > 0 and state.position[self.symbol] > 0:
+            self.addLimitOrder(state.position[self.symbol], False, state.position[self.symbol], highest_bid)  
+            
+        bid_offset = 0
+        ask_offset = 0
+        
+
+    #======================Printing======================
+
+    #highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    #lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+
+    #our_highest_bid = max(buy_orders.keys()) + bid_offset
+    #our_lowest_ask = min(sell_orders.keys()) + ask_offset
+
+
+    #print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    # print(base_price)
+    # mid_price = (highest_bid + lowest_ask) / 2.0
+    # print(mid_price)
+    
+    #======================Limit orders======================
+    
+    if do_mm:
+        for price in buy_orders:
+            if buy_orders[price] > 0:
+                self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], bid_price + bid_offset)
+        for price in sell_orders:
+            if sell_orders[price] < 0:
+                self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
+    
+
 # Strategies to run
 strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
@@ -945,7 +1094,8 @@ strategies: List[Strategy] = [
     Strategy("COCONUTS", 600, CocoStrategy),
     # Strategy("PINA_COLADAS", 300, pinaStrategy)
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
-	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS"))
+	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
+    Strategy("BERRIES", 250, BerryStrategy)
 ]
 
 class Trader:
