@@ -76,7 +76,7 @@ pnl_ax.set_ylabel("PnL Seashells")
 corr_ax_lower, corr_ax_upper = corr_ax.get_ylim()
 
 # These constants should be the same as the ones in the strategy file
-UPPER_CORR_THRESHOLD = 0.7
+UPPER_CORR_THRESHOLD = 0.5
 CORR_LOOKBACK_THRESHOLD = 0.7
 LOWER_CORR_THRESHOLD = 0.25
 
