@@ -736,6 +736,80 @@ def BerryStrategy(self: Strategy, state: TradingState) -> None:
         elif highest_bid > 0 and state.position[self.symbol] > 0:
             self.addLimitOrder(state.position[self.symbol], False, state.position[self.symbol], highest_bid)  
     
+def DivingGearStrategy(self: Strategy, state: TradingState) -> None:
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("bp_history", [])
+    self.data.setdefault("bp_slope_history", [])
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+    self.data.setdefault('index_price_history', [])
+    self.data.setdefault('dolphin_p_flux', [])
+    self.data.setdefault('dolphin_p_flux_positive', False)
+    self.data.setdefault('in_trade', False)
+    self.data.setdefault('length_of_trade', 0)
+
+    #PARAMS
+    BASE_PRICE_SLOPE_LOOKBACK = 120
+    BASE_PRICE_SLOPE_EXIT_THRESHOLD = 0.00001
+    PFLUX_THRESHOLD = 5.0
+    #ENDPARAMS
+
+    self.data["price_history"].append(getMidPrice(self, state))
+    self.data['index_price_history'].append(state.observations['DOLPHIN_SIGHTINGS'])
+    if len(self.data['index_price_history']) > 1:
+        self.data['dolphin_p_flux'].append(self.data['index_price_history'][-1] - self.data['index_price_history'][-2])
+    else:
+        self.data['dolphin_p_flux'].append(0)
+
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    max_bid = max(state.order_depths[self.symbol].buy_orders)
+    min_ask = min(state.order_depths[self.symbol].sell_orders)
+
+    base_price_for_slope = getFairPrice(self, state, max_bid, min_ask, BASE_PRICE_SLOPE_LOOKBACK)
+    self.data['bp_history'].append(base_price_for_slope)
+    if len(self.data['bp_history']) < BASE_PRICE_SLOPE_LOOKBACK:
+        self.data['bp_slope_history'].append(0)
+    else:
+        self.data['bp_slope_history'].append(self.data['bp_history'][-1]/self.data['bp_history'][-BASE_PRICE_SLOPE_LOOKBACK] - 1)
+
+    if abs(self.data['dolphin_p_flux'][-1]) > PFLUX_THRESHOLD and not self.data['in_trade']:
+        self.data['in_trade'] = True
+        if self.data['dolphin_p_flux'][-1] > 0:
+            self.data['dolphin_p_flux_positive'] = True
+        else:
+            self.data['dolphin_p_flux_positive'] = False
+        self.data['length_of_trade'] = 0
+
+    elif self.data['in_trade'] and self.data['length_of_trade'] > BASE_PRICE_SLOPE_LOOKBACK and \
+        (abs(self.data['bp_slope_history'][-1]) < BASE_PRICE_SLOPE_EXIT_THRESHOLD or \
+        (self.data['dolphin_p_flux_positive'] and self.data['bp_slope_history'][-1] < 0) or \
+        (not self.data['dolphin_p_flux_positive'] and self.data['bp_slope_history'][-1] > 0)):
+
+        self.data['in_trade'] = False
+        self.data['length_of_trade'] = 0
+
+    best_ask = min(state.order_depths[self.symbol].sell_orders) if len(state.order_depths[self.symbol].sell_orders) > 0 else None
+    best_bid = max(state.order_depths[self.symbol].buy_orders) if len(state.order_depths[self.symbol].buy_orders) > 0 else None
+
+    if self.data['in_trade'] and self.data['dolphin_p_flux_positive']:
+        self.data['length_of_trade'] += 1
+        
+        if best_ask is not None:
+            self.addLimitOrder(state.position[self.symbol], True, 999999, best_ask)
+    elif self.data['in_trade'] and not self.data['dolphin_p_flux_positive']:
+        self.data['length_of_trade'] += 1
+        
+        if best_bid is not None:
+            self.addLimitOrder(state.position[self.symbol], False, 999999, best_bid)
+
+    else:
+        if state.position[self.symbol] > 0 and best_bid is not None:
+            self.addLimitOrder(state.position[self.symbol], False, state.position[self.symbol], best_bid)
+        elif best_ask is not None:
+            self.addLimitOrder(state.position[self.symbol], True, state.position[self.symbol], best_ask)
+
 
 # Strategies to run
 strategies: List[Strategy] = [
@@ -744,7 +818,8 @@ strategies: List[Strategy] = [
     Strategy("COCONUTS", 600, CocoStrategy),
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
-    Strategy("BERRIES", 250, BerryStrategy)
+    Strategy("BERRIES", 250, BerryStrategy),
+    Strategy("DIVING_GEAR", 50, DivingGearStrategy),
 ]
 
 class Trader:
