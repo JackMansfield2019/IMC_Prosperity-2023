@@ -1,13 +1,13 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 from AutoUploader import upload_file, parse_response
 from AutoDownloader import download_algorithms
-<<<<<<< HEAD
-=======
+from Submission import Submission
 import os
+import sys
+import json
 from dotenv import load_dotenv
 #    ^^^^^^
 # pip install python-dotenv
->>>>>>> c77f3b0514a4d408d00c3d67f1c481b987f97b74
 from random import randint, uniform, gauss
 #                                    ^^^^^
 # this, and possilby other random functions, may be used to get better params
@@ -15,15 +15,12 @@ from random import randint, uniform, gauss
 # information for the upload and download functions
 STRATEGY_PATH = "Hyper_Opt_Strategies/Example_Tunable_Strat.py"
 STRATEGY_NAME = "Example_Tunable_Strat.py"
-<<<<<<< HEAD
-AUTH_TOKEN = "eyJraWQiOiJ4M3NhZjFZTkNsRGwyVDljemdCR01ybnVVMlJlNDNjb1E1UGxYMWgwb2tBPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiI2MDI3YTg2Ni0zYjUxLTRlZDAtYjYyMy1kNDFhOTQyMWE0YmMiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmV1LXdlc3QtMS5hbWF6b25hd3MuY29tXC9ldS13ZXN0LTFfek9mVngwcWl3IiwiY29nbml0bzp1c2VybmFtZSI6IjYwMjdhODY2LTNiNTEtNGVkMC1iNjIzLWQ0MWE5NDIxYTRiYyIsIm9yaWdpbl9qdGkiOiJjNzI2M2M0NS1jODVkLTRmNWItOTBlZS00MWRiYjk4MGNlNzUiLCJhdWQiOiIzMmM1ZGM1dDFrbDUxZWRjcXYzOWkwcjJzMiIsImV2ZW50X2lkIjoiY2I1NzllNmUtZWZhNy00ZGExLWJjMmUtMzUwNGNmZTkyMjZlIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2Nzk3Mjc0MjgsImV4cCI6MTY3OTczNDYzNCwiaWF0IjoxNjc5NzMxMDM0LCJqdGkiOiIwYTdlNzM2Ny1lMGM2LTQxYTQtODZkZi1jOTcwYjdkMDMxMmMiLCJlbWFpbCI6ImNvbm5vcmp3aXR0bWFuQGdtYWlsLmNvbSJ9.AhVvN0Uawi1LmXW3d1Nj_pVS9_pIPsOECvQpK-3BzWPllKBq4oi08N4TxXs5RZyNqYKEj1k9Oj2pmnAv4-fsjB5JyOV3iD7C1Ta4m7tJgljJ5ywdqMOWINezVIvwNWAISa-iFsWC_5EnPGMq07OdOJLQjqMZJoMcikuz5sFNqyLhEO9MPxxzsfZBGNhZeuUL9-JazNGf7f9ilVaTxcEnR9utp1VhQu4FsjtsTOO9CPnUKg2Z_G8tCfeyQZu_S7sCoOMlsCjYsk2v1PsP4TcG2g1wLiRO6R32dTxEUmjwFN0aFbxouTqaFYdO1PrYSwkyHBajLSAvHEX5Zr_mIDTnPg"
-=======
+ROUND_TO_DOWNLOAD = "ROUND3"
 
 # make a dot env file in this directory called ".env" and put your auth token in it, such as AUTH_TOKEN=0gj20f92efi1093i4jr9qjfqefoidnofieqnfoi
 load_dotenv()
 
 AUTH_TOKEN = os.getenv("AUTH_TOKEN")
->>>>>>> c77f3b0514a4d408d00c3d67f1c481b987f97b74
 
 # the limits for the params you want to test
 # the first value is the minimum, the second is the maximum
@@ -87,9 +84,45 @@ def blast_submission(strategy_path: str, strategy_name: str, auth_token: str, nu
 
     return True
     
-# modify the number of submissions you want to upload here        v
-<<<<<<< HEAD
-assert(blast_submission(STRATEGY_PATH, STRATEGY_NAME, AUTH_TOKEN, 3, PARAM_LIMITS))
-=======
-assert(blast_submission(STRATEGY_PATH, STRATEGY_NAME, AUTH_TOKEN, 1, PARAM_LIMITS))
->>>>>>> c77f3b0514a4d408d00c3d67f1c481b987f97b74
+def sort_submissions_by_profit(submissions: List[Submission]) -> List[Submission]:
+    return sorted(submissions, key=lambda submission: submission.fetch_performance(AUTH_TOKEN)[-1][1] if len(submission.fetch_performance(AUTH_TOKEN)) > 0 else 0, reverse=True)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3", sys.argv[0], "<action: blast_submission, save_results>")
+        sys.exit(1)
+
+    if sys.argv[1] == "blast_submission":
+        # modify the number of submissions you want to upload here        v
+        assert(blast_submission(STRATEGY_PATH, STRATEGY_NAME, AUTH_TOKEN, 1, PARAM_LIMITS))
+    elif sys.argv[1] == "save_results":
+        submissions = download_algorithms(AUTH_TOKEN, ROUND_TO_DOWNLOAD)
+        submissions = sort_submissions_by_profit(submissions)
+
+        with open("Results.txt", "w") as f:
+            for i, submission in enumerate(submissions):
+                f.write(str(submission) + "\n")
+                performance = submission.fetch_performance(AUTH_TOKEN)
+                f.write("Profit/Loss: " + (str(performance[-1][1]) if len(performance) > 0 else "Unknown") + "\n")
+                # search through submission.file_content for the params
+                # write the params to the file
+                params: Dict[str, Any] = {}
+                params_started = False
+                for line in submission.file_content.splitlines():
+                    if "#PARAMS" in line:
+                        params_started = True
+                        continue
+                    if params_started:
+                        if "#ENDPARAMS" in line:
+                            break
+                        for param in PARAM_LIMITS:
+                            if param in line:
+                                if line.find(" = ") == -1:
+                                    raise Exception("Param not formatted correctly, should be PARAM = value")
+                                params[param] = line[line.find(" = ") + 3:]
+                                break
+                params_json = json.dumps(params, indent=4)
+                f.write("Params:\n")
+                f.write(params_json)
+                f.write("\n\n")
