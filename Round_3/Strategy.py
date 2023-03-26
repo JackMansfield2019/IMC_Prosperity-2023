@@ -566,83 +566,6 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
 
-def pinaStrategy(self: Strategy, state: TradingState) -> None:
-    global pina_distribution
-
-    self.data.setdefault("price_history", [])
-    self.data.setdefault("bp_history", [])
-    self.data.setdefault('ema_short', [])
-    self.data.setdefault('ema_long', [])
-    self.data.setdefault('max_bids', [])
-    self.data.setdefault('min_asks', [])
-
-    self.data["price_history"].append(getMidPrice(self, state))
-    add_EMA(self, state, 4.0, self.data['ema_short'])
-    add_EMA(self, state, 96.0, self.data['ema_long'])
-
-    if self.symbol not in state.position:
-        state.position[self.symbol] = 0
-
-    max_buy = self.maxNewPosition(state.position[self.symbol], True)
-    max_sell = self.maxNewPosition(state.position[self.symbol], False)
-
-    max_bid = max(state.order_depths[self.symbol].buy_orders)
-    min_ask = min(state.order_depths[self.symbol].sell_orders)
-
-    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
-    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
-    self.data['bp_history'].append(base_price_raw)
-    if state.timestamp < 50000:
-        ask_price = base_price + 2
-        bid_price = base_price - 2
-    else: 
-        ask_price = base_price + 3
-        bid_price = base_price - 3
-
-    offset_pina_distribution = {price + base_price: pina_distribution[price] for price in pina_distribution}
-
-    buy_orders = distributeValue(max_buy, {price: offset_pina_distribution[price] for price in range(base_price-1, base_price-6, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_pina_distribution[price] for price in range(base_price+1, base_price+6)})
-    sell_orders = {price: -sell_orders[price] for price in sell_orders}
-        
-    sell_order_prices = [price for price in sell_orders]
-    buy_order_prices = [price for price in buy_orders]
-
-    buy_order_volumes = [buy_orders[price] for price in buy_orders]
-    sell_order_volumes = [sell_orders[price] for price in sell_orders]
-
-    #if abs(ema_slope) > 0:
-        #print("changing spread")
-    #    change_Spread(self, state, ema_crossover, buy_order_prices, sell_order_prices)
-        #^^^change the spread to directionally bet based on an indicator
-
-    buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
-    sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
-        
-    ask_offset = 0
-    bid_offset = 0
-    SLOPE_LOOKBACK = 3
-
-    # highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
-    # lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
-
-    # our_highest_bid = max(buy_orders.keys()) + bid_offset
-    # our_lowest_ask = min(sell_orders.keys()) + ask_offset
-    
-
-
-    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
-    # print(base_price)
-    # mid_price = (highest_bid + lowest_ask) / 2.0
-    # print(mid_price)
-    
-    for price in buy_orders:
-        if buy_orders[price] > 0:
-            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], bid_price + bid_offset)
-    for price in sell_orders:
-        if sell_orders[price] < 0:
-            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
-
 def CocoStrategy(self: Strategy, state: TradingState) -> None:
     global Coco_distribution
 
@@ -893,9 +816,7 @@ def BerryStrategy(self: Strategy, state: TradingState) -> None:
 strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
-    #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
     Strategy("COCONUTS", 600, CocoStrategy),
-    # Strategy("PINA_COLADAS", 300, pinaStrategy)
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
     Strategy("BERRIES", 250, BerryStrategy)
