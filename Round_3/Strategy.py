@@ -670,29 +670,66 @@ def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
 def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol: Symbol) -> None:
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
+        
+    order_depth_after_mkt_orders = state.order_depths[self.symbol]
 
     self.data.setdefault("price_history", [])
     self.data.setdefault("correlating_product_price_history", [])
+    self.data.setdefault("correlation_hist", [])
     self.data.setdefault("in_trade", False)
+    self.data.setdefault('sloping', False)
     self.data.setdefault('max_bids', [])
     self.data.setdefault('min_asks', [])
+    self.data.setdefault('bp_history', [])
+    self.data.setdefault('ema_short', [])
+    self.data.setdefault('ema_long', [])
+    self.data.setdefault('macd', [])
+    self.data.setdefault('macd_signal', [])
 
     self.data['price_history'].append(getMidPriceTS(state, self.symbol))
     self.data['correlating_product_price_history'].append(getMidPriceTS(state, correlating_symbol))
+
+    add_EMA(self, state, 12, self.data['ema_short'])
+    add_EMA(self, state, 26, self.data['ema_long'])
+    add_MACD(self, state, 9, self.data['macd'], self.data['macd_signal'])
 
     CORRELATION_LOOKBACK = 26
 
     correlation = corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
     
+    self.data["correlation_hist"].append(correlation)
+    
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
     base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
+    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
+    self.data['bp_history'].append(base_price_raw)
 
     ask_price = base_price + 3
     bid_price = base_price - 3
     UPPER_CORR_THRESHOLD = 0.7
     LOWER_CORR_THRESHOLD = 0.1
+
+
+    SLOPE_THRESH = 1.3
+    SLOPE_LOOKBACK = 6
+    STOP_THRESH = 1.0
+    
+
+    lim = 0
+    if len(self.data['price_history']) < SLOPE_LOOKBACK:
+        lim = len(self.data['price_history'])
+    else:
+        lim = SLOPE_LOOKBACK
+
+    temp_data = self.data['price_history'][-lim:]
+    avg = 0
+    for x in range(0, len(temp_data)-1):
+        avg += temp_data[x+1]-temp_data[x]
+
+    avg /= lim
+    slope = avg
 
     if correlation != 0:
         if correlation < LOWER_CORR_THRESHOLD:            
