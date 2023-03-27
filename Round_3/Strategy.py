@@ -614,24 +614,27 @@ def CocoStrategy(self: Strategy, state: TradingState) -> None:
     ask_offset = 0
     bid_offset = 0
    
-    # highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
-    # lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
 
-    # our_highest_bid = max(buy_orders.keys()) + bid_offset
-    # our_lowest_ask = min(sell_orders.keys()) + ask_offset
+    our_highest_bid = max(buy_orders.keys()) + bid_offset
+    our_lowest_ask = min(sell_orders.keys()) + ask_offset
 
 
-    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
+    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(state.position[self.symbol]))
     # print(base_price)
     # mid_price = (highest_bid + lowest_ask) / 2.0
     # print(mid_price)
+
+    # print(bid_price, ask_price, state.position[self.symbol])
+
     
     for price in buy_orders:
         if buy_orders[price] > 0:
-            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], bid_price + bid_offset)
+            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], highest_bid)
     for price in sell_orders:
         if sell_orders[price] < 0:
-            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
+            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], lowest_ask)
 
 def add_MACD(self: Strategy, state: TradingState, L: float, MACD: list[float], MACD_signal: list[float]):
     '''
@@ -711,10 +714,12 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     UPPER_CORR_THRESHOLD = 0.7
     LOWER_CORR_THRESHOLD = 0.1
 
-
     SLOPE_THRESH = 1.3
     SLOPE_LOOKBACK = 6
     STOP_THRESH = 1.0
+
+    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
     
 
     lim = 0
@@ -750,6 +755,12 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
                     ask_price = ask_price + 1
             else:
                 self.data['in_trade'] = False
+
+
+        our_lowest_ask = ask_price
+        our_highest_bid = bid_price    
+        print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(state.position[self.symbol]))
+
 
         self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
         self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
@@ -850,13 +861,13 @@ def DivingGearStrategy(self: Strategy, state: TradingState) -> None:
 
 # Strategies to run
 strategies: List[Strategy] = [
-    Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
-    Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
-    Strategy("COCONUTS", 600, CocoStrategy),
+    # Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
+    # Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
+    # Strategy("COCONUTS", 600, CocoStrategy),
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
-    Strategy("BERRIES", 250, BerryStrategy),
-    Strategy("DIVING_GEAR", 50, DivingGearStrategy),
+    # Strategy("BERRIES", 250, BerryStrategy),
+    # Strategy("DIVING_GEAR", 50, DivingGearStrategy),
 ]
 
 class Trader:
@@ -877,7 +888,7 @@ class Trader:
         global strategies
         for strategy in strategies:
             result[strategy.product] = strategy.run(state)
-            
+        ''' 
         pina_listings = {"PINA_COLADAS": state.listings["PINA_COLADAS"]} if "PINA_COLADAS" in state.listings else {}
         pina_od = {"PINA_COLADAS": state.order_depths["PINA_COLADAS"]} if "PINA_COLADAS" in state.order_depths else {}
         pina_own = {"PINA_COLADAS": state.own_trades["PINA_COLADAS"]} if "PINA_COLADAS" in state.own_trades else {}
@@ -886,7 +897,7 @@ class Trader:
         pina_observations = {"PINA_COLADAS": state.observations["PINA_COLADAS"]} if "PINA_COLADAS" in state.observations else {}
         
         pina_state = TradingState(state.timestamp, pina_listings, pina_od, pina_own, pina_mkt, pina_position, pina_observations)
-
-        logger.flush(pina_state,result)
+        '''
+        # logger.flush(state,result)
 
         return result
