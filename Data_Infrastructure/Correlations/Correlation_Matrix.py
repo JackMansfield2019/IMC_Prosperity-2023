@@ -21,6 +21,18 @@ for idx in range(0, len(df.axes[0])):
             df_aug.loc[df_aug[df_aug.columns[column_index]].count(), product] = df['mid_price'][idx]
 
 
+# Add an index for the calculation of the PICNIC index
+df_aug.insert(0, "PICNIC_INDEX", None)
+
+# Loop over rows in df_aug
+for idx in range(0, len(df_aug.axes[0])):
+    # print progress
+    if idx % 10000 == 0:
+        print("Index Adding Progress: " + str(idx) + "/" + str(len(df.axes[0])))
+    
+    # Set the entry to be the sum of the products
+    df_aug.loc[idx, "PICNIC_INDEX"] = df_aug.loc[idx, "DIP"] * 4 + df_aug.loc[idx, "BAGUETTE"] * 2 + df_aug.loc[idx, "UKULELE"]
+
 print("computing correlation matrix...")
 #correlation matrix computation
 corr = df_aug.astype('float64').corr()
