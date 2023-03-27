@@ -5,16 +5,20 @@ import matplotlib.pyplot as plt
 # make sure your current directory is the Correlations folder when running, and the csv is called order_book_data.csv
 df = pd.read_csv("order_book_data.csv", sep=";")
 
+USE_PRODUCTS = ["DIP", "BAGUETTE", "UKULELE", "PICNIC_BASKET"]
 
 #create augmented dataframe (commodities w/ their corresponding mid prices)
 df_aug = pd.DataFrame(columns=[])
 for elem in df["product"]:
-    if elem not in df_aug.columns:
+    if elem not in df_aug.columns and elem in USE_PRODUCTS:
         df_aug[elem] = None
 for idx in range(0, len(df.axes[0])):
     # print progress
     if idx % 10000 == 0:
         print("Progress: " + str(idx) + "/" + str(len(df.axes[0])))
+    
+    if df['product'][idx] not in USE_PRODUCTS:
+        continue
     
     column_index = df_aug.columns.get_loc(df['product'][idx])
     df_aug.loc[df_aug[df_aug.columns[column_index]].count(), df['product'][idx]] = df['mid_price'][idx]
