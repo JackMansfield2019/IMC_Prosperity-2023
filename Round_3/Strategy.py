@@ -668,15 +668,6 @@ def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
 
 # The pairs trading strategy will also take in a symbol for the correlating product
 def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol: Symbol) -> None:
-    '''
-    MM with spread 3
-    if (corr < thresh)
-        if (pina > 1.875 * coco)
-            lower bid
-        else
-            raise ask
-    '''
-    
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
         
@@ -689,24 +680,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     self.data.setdefault('sloping', False)
     self.data.setdefault('max_bids', [])
     self.data.setdefault('min_asks', [])
-    self.data.setdefault('bp_history', [])
-    self.data.setdefault('ema_short', [])
-    self.data.setdefault('ema_long', [])
-    self.data.setdefault('macd', [])
-    self.data.setdefault('macd_signal', [])
-    if self.symbol not in state.position:
-        state.position[self.symbol] = 0
-        
-    order_depth_after_mkt_orders = state.order_depths[self.symbol]
-
-    self.data.setdefault("price_history", [])
-    self.data.setdefault("correlating_product_price_history", [])
-    self.data.setdefault("correlation_hist", [])
-    self.data.setdefault("in_trade", False)
-    self.data.setdefault('sloping', False)
-    self.data.setdefault('max_bids', [])
-    self.data.setdefault('min_asks', [])
-    self.data.setdefault('directional_flag', False)
     self.data.setdefault('bp_history', [])
     self.data.setdefault('ema_short', [])
     self.data.setdefault('ema_long', [])
@@ -720,7 +693,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     add_EMA(self, state, 26, self.data['ema_long'])
     add_MACD(self, state, 9, self.data['macd'], self.data['macd_signal'])
 
-
     CORRELATION_LOOKBACK = 26
 
     correlation = corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
@@ -731,10 +703,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
     base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
-
-    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
-    self.data['bp_history'].append(base_price_raw)
-
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
     self.data['bp_history'].append(base_price_raw)
 
@@ -763,7 +731,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     avg /= lim
     slope = avg
 
-
     if correlation != 0:
         if correlation < LOWER_CORR_THRESHOLD:            
             if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
@@ -772,11 +739,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
             else:
                 ask_price = ask_price + 1
                 bid_price = bid_price + 1
-
-                
-                if not self.data['directional_flag']:
-                    self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
-                    self.data['directional_flag'] = True
             self.data["in_trade"] = True          
         elif self.data['in_trade']:
             if correlation < UPPER_CORR_THRESHOLD:
@@ -787,38 +749,6 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
                     bid_price = bid_price + 1
                     ask_price = ask_price + 1
             else:
-                self.data['in_trade'] = False
-
-        # if not self.data["in_trade"]:
-        #     # if state.position[self.symbol] > 0:
-        #     #     # print("Selling", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
-        #     #     continue
-        #     # else:
-        #     #     # print("Buying", self.symbol, "at", getMidPriceTS(state, self.symbol), "because of correlation", correlation, "and position", state.position[self.symbol])
-        #     #     continue
-        #     self.addMarketOrders(order_depth_after_mkt_orders, state.position[self.symbol], state.position[self.symbol] < 0, state.position[self.symbol])
-        # if slope < -SLOPE_THRESH or (self.data['sloping'] and slope < -STOP_THRESH):
-        #     self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
-        #     self.data['sloping'] = True
-        # elif slope > SLOPE_THRESH or (self.data['sloping'] and slope > STOP_THRESH):
-        #     self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
-        #     self.data['sloping'] = True
-        # else:
-        #     self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
-        #     self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
-        #     self.data['sloping'] = False
-
-        self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
-        self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
-
-    if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
-        if self.data['directional_flag']:
-            self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
-            self.data['directional_flag'] = False
-        else:
-            if not self.data['directional_flag']:
-                self.addLimitOrder(state.position[self.symbol], False, 100, bid_price)
-                self.data['directional_flag'] = False
                 self.data['in_trade'] = False
 
         self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
@@ -917,15 +847,12 @@ def DivingGearStrategy(self: Strategy, state: TradingState) -> None:
         elif best_ask is not None:
             self.addLimitOrder(state.position[self.symbol], True, state.position[self.symbol], best_ask)
 
+
 # Strategies to run
 strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
-    #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
     Strategy("COCONUTS", 600, CocoStrategy),
-    # Strategy("PINA_COLADAS", 300, pinaStrategy)
-    # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
-	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
     Strategy("BERRIES", 250, BerryStrategy),
@@ -950,7 +877,16 @@ class Trader:
         global strategies
         for strategy in strategies:
             result[strategy.product] = strategy.run(state)
+            
+        pina_listings = {"PINA_COLADAS": state.listings["PINA_COLADAS"]} if "PINA_COLADAS" in state.listings else {}
+        pina_od = {"PINA_COLADAS": state.order_depths["PINA_COLADAS"]} if "PINA_COLADAS" in state.order_depths else {}
+        pina_own = {"PINA_COLADAS": state.own_trades["PINA_COLADAS"]} if "PINA_COLADAS" in state.own_trades else {}
+        pina_mkt = {"PINA_COLADAS": state.market_trades["PINA_COLADAS"]} if "PINA_COLADAS" in state.market_trades else {}
+        pina_position = {"PINA_COLADAS": state.position["PINA_COLADAS"]} if "PINA_COLADAS" in state.position else {}
+        pina_observations = {"PINA_COLADAS": state.observations["PINA_COLADAS"]} if "PINA_COLADAS" in state.observations else {}
+        
+        pina_state = TradingState(state.timestamp, pina_listings, pina_od, pina_own, pina_mkt, pina_position, pina_observations)
 
-        logger.flush(state,result)
+        logger.flush(pina_state,result)
 
         return result
