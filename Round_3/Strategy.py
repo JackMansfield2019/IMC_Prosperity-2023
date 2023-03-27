@@ -1,7 +1,11 @@
 # Combined Strategy for Bananas and Pearls
 
 import math
+<<<<<<< HEAD
 import numpy as np
+=======
+from numpy import corrcoef
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 import json
 
 from typing import Dict, List, Callable, Any, TypeVar
@@ -530,6 +534,7 @@ def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: f
 
 def BananaStrategy(self: Strategy, state: TradingState) -> None:
     global banana_distribution
+<<<<<<< HEAD
 
     self.data.setdefault("price_history", [])
     self.data.setdefault("bp_history", [])
@@ -558,12 +563,26 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     max_buy = self.maxNewPosition(state.position[self.symbol], True)
     max_sell = self.maxNewPosition(state.position[self.symbol], False)
 
+=======
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+    
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    max_buy = self.maxNewPosition(state.position[self.symbol], True)
+    max_sell = self.maxNewPosition(state.position[self.symbol], False)
+ 
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
     base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 7)), 0))
+<<<<<<< HEAD
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
     self.data['bp_history'].append(base_price_raw)
+=======
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 
     offset_banana_distribution = {price + base_price: banana_distribution[price] for price in banana_distribution}
 
@@ -577,6 +596,7 @@ def BananaStrategy(self: Strategy, state: TradingState) -> None:
     buy_order_volumes = [buy_orders[price] for price in buy_orders]
     sell_order_volumes = [sell_orders[price] for price in sell_orders]
 
+<<<<<<< HEAD
     #if abs(ema_slope) > 0:
         #print("changing spread")
     #    change_Spread(self, state, ema_crossover, buy_order_prices, sell_order_prices)
@@ -710,6 +730,17 @@ def pinaStrategy(self: Strategy, state: TradingState) -> None:
     for price in sell_orders:
         if sell_orders[price] < 0:
             self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], ask_price + ask_offset)
+=======
+    buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
+    sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
+
+    for price in buy_orders:
+        if buy_orders[price] > 0:
+            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price)
+    for price in sell_orders:
+        if sell_orders[price] < 0:
+            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price)
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 
 def CocoStrategy(self: Strategy, state: TradingState) -> None:
     global Coco_distribution
@@ -813,6 +844,7 @@ def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
 
 # The pairs trading strategy will also take in a symbol for the correlating product
 def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol: Symbol) -> None:
+<<<<<<< HEAD
     '''
     MM with spread 3
     if (corr < thresh)
@@ -839,10 +871,22 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     self.data.setdefault('ema_long', [])
     self.data.setdefault('macd', [])
     self.data.setdefault('macd_signal', [])
+=======
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+
+    self.data.setdefault("price_history", [])
+    self.data.setdefault("correlating_product_price_history", [])
+    self.data.setdefault("in_trade", False)
+    self.data.setdefault('max_bids', [])
+    self.data.setdefault('min_asks', [])
+    self.data.setdefault('directional_flag', False)
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 
     self.data['price_history'].append(getMidPriceTS(state, self.symbol))
     self.data['correlating_product_price_history'].append(getMidPriceTS(state, correlating_symbol))
 
+<<<<<<< HEAD
     add_EMA(self, state, 12, self.data['ema_short'])
     add_EMA(self, state, 26, self.data['ema_long'])
     add_MACD(self, state, 9, self.data['macd'], self.data['macd_signal'])
@@ -852,19 +896,28 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
     correlation = np.corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
     
     self.data["correlation_hist"].append(correlation)
+=======
+    CORRELATION_LOOKBACK = 26
+
+    correlation = corrcoef(self.data['price_history'][-CORRELATION_LOOKBACK:-1], self.data['correlating_product_price_history'][-CORRELATION_LOOKBACK:-1])[0, 1] if len(self.data['price_history']) >= CORRELATION_LOOKBACK else 0
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
     
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
     base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 4)), 0))
+<<<<<<< HEAD
     base_price_raw = getFairPrice(self, state, max_bid, min_ask, 4)
     self.data['bp_history'].append(base_price_raw)
+=======
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 
     ask_price = base_price + 3
     bid_price = base_price - 3
     UPPER_CORR_THRESHOLD = 0.7
     LOWER_CORR_THRESHOLD = 0.1
 
+<<<<<<< HEAD
 
     SLOPE_THRESH = 1.3
     SLOPE_LOOKBACK = 6
@@ -903,16 +956,43 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
             else:
                 ask_price = ask_price + 1
                 bid_price = bid_price + 1
+=======
+    if correlation != 0:
+        if correlation < LOWER_CORR_THRESHOLD:   
+            if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
+                self.data['directional_flag'] = True
+                bid_price = bid_price - 1
+                ask_price = ask_price - 1
+                
+                if not self.data['directional_flag']:
+                    self.addLimitOrder(state.position[self.symbol], False, 100, bid_price)
+                    self.data['directional_flag'] = True
+
+            else:
+                ask_price = ask_price + 1
+                bid_price = bid_price + 1
+                
+                if not self.data['directional_flag']:
+                    self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
+                    self.data['directional_flag'] = True
+
+                    
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
             self.data["in_trade"] = True          
         elif self.data['in_trade']:
             if correlation < UPPER_CORR_THRESHOLD:
                 if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
                     bid_price = bid_price - 1
                     ask_price = ask_price - 1
+<<<<<<< HEAD
+=======
+                    
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
                 else:
                     bid_price = bid_price + 1
                     ask_price = ask_price + 1
             else:
+<<<<<<< HEAD
                 self.data['in_trade'] = False
 
         # if not self.data["in_trade"]:
@@ -937,15 +1017,57 @@ def pairsTradingStrategy(self: Strategy, state: TradingState, correlating_symbol
         self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
         self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
 
+=======
+                if self.data['price_history'][-1] > 1.875 * self.data['correlating_product_price_history'][-1]:
+                    if self.data['directional_flag']:
+                        self.addLimitOrder(state.position[self.symbol], True, 100, bid_price)
+                        self.data['directional_flag'] = False
+                else:
+                    if not self.data['directional_flag']:
+                        self.addLimitOrder(state.position[self.symbol], False, 100, bid_price)
+                        self.data['directional_flag'] = False
+                self.data['in_trade'] = False
+
+        self.addLimitOrder(state.position[self.symbol], True, 9999999, bid_price)
+        self.addLimitOrder(state.position[self.symbol], False, 9999999, ask_price)
+
+def BerryStrategy(self: Strategy, state: TradingState) -> None:
+    if self.symbol not in state.position:
+        state.position[self.symbol] = 0
+    
+    lowest_ask = min(state.order_depths[self.symbol].sell_orders) if len(state.order_depths[self.symbol].sell_orders) > 0 else 0
+    highest_bid = max(state.order_depths[self.symbol].buy_orders) if len(state.order_depths[self.symbol].buy_orders) > 0 else 0
+            
+    if (state.timestamp % 1000000 > 350000 and state.timestamp % 1000000 < 500000):
+        if lowest_ask > 0:
+            self.addLimitOrder(state.position[self.symbol], True, 100, lowest_ask)
+    elif (state.timestamp % 1000000 > 500000 and state.timestamp % 1000000 < 700000):
+        if highest_bid > 0:
+            self.addLimitOrder(state.position[self.symbol], False, 100, highest_bid)
+    else:  
+        if lowest_ask > 0 and state.position[self.symbol] < 0:
+            self.addLimitOrder(state.position[self.symbol], True, -state.position[self.symbol], lowest_ask)
+        elif highest_bid > 0 and state.position[self.symbol] > 0:
+            self.addLimitOrder(state.position[self.symbol], False, state.position[self.symbol], highest_bid)  
+    
+
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 # Strategies to run
 strategies: List[Strategy] = [
     Strategy('PEARLS', limits["PEARLS"], market_making_pearls_strategy),
     Strategy('BANANAS', limits["BANANAS"], BananaStrategy),
+<<<<<<< HEAD
     #Strategy("PINA_COLADAS", 300, pinaStrategy), # Commented out for now, not currently profitable
     Strategy("COCONUTS", 600, CocoStrategy),
     # Strategy("PINA_COLADAS", 300, pinaStrategy)
     # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
 	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS"))
+=======
+    Strategy("COCONUTS", 600, CocoStrategy),
+    # Strategy("COCONUTS", 300, lambda self, state: pairsTradingStrategy(self, state, "PINA_COLADAS")),
+	Strategy("PINA_COLADAS", 300, lambda self, state: pairsTradingStrategy(self, state, "COCONUTS")),
+    Strategy("BERRIES", 250, BerryStrategy)
+>>>>>>> 92ebfda7c71560e1d9720f6aa53ffd06d0270d0e
 ]
 
 class Trader:

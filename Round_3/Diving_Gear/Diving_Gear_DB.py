@@ -330,10 +330,8 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(remaining_quantity)))
-                        print("Placing order for", abs(remaining_quantity), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(remaining_quantity)))
-                        print("Placing order for", -abs(remaining_quantity), "shares at", price, "for", self.symbol)
 
                     if remaining_quantity == abs(orders[price]): # if the final order to be placed is the same size as the 
                         # matching order in the order book, we can just delete the order from the order book, otherwise, 
@@ -352,10 +350,8 @@ class Strategy:
 
                     if buy:
                         new_orders.append(Order(self.symbol, price, abs(orders[price])))
-                        print("Placing order for", abs(orders[price]), "shares at", price, "for", self.symbol)
                     else:
                         new_orders.append(Order(self.symbol, price, -abs(orders[price])))
-                        print("Placing order for", -abs(orders[price]), "shares at", price, "for", self.symbol)
 
                     if buy:
                         del order_depth_after_mkt_orders.sell_orders[price]
@@ -366,34 +362,8 @@ class Strategy:
 
         return new_orders
 
-def add_EMA(self: Strategy, state: TradingState, L: float, EMA: list[float]):
-    '''
-    Function returns the current EMA
-    if EMA == 0:
-        set EMA to last midprice
-    else:
-        EMA = e^(-L) * EMA + (1 - e^(-L)) * Current_Mid_Price
-    '''
-    L_use = (1.0/L)
-    if len(EMA) == 0:
-        EMA.append(self.data['price_history'][-1])
-    else:
-        # prev = self.EMA_short
-        EMA.append(math.exp(-L_use)*EMA[-1] + (1-math.exp(-L_use))*self.data['price_history'][-1])
-
-def get_EMA_slope(self: Strategy, state: TradingState, L: int) -> float:
-    '''
-    Function returns the slope of the EMA
-    '''
-    EMA = self.data['ema_long']
-
-    if len(EMA) < L:
-        return 0
-    else:
-        return (EMA[-1] - EMA[-L])/L
-
-def getMidPrice(self: Strategy, state: TradingState) -> float:
-    Order_Depth = state.order_depths[self.symbol]
+def getMidPrice(state: TradingState, symbol: Symbol) -> float:
+    Order_Depth = state.order_depths[symbol]
     Buy_Orders = Order_Depth.buy_orders
     max_bid = -1
     for key in Buy_Orders:
@@ -442,144 +412,74 @@ def getFairPrice(self: Strategy, state: TradingState, max_bid: float, min_ask: f
     return base_price
 
 def DivingGearStrategy(self: Strategy, state: TradingState) -> None:
-    global diving_gear_distribution
-
     self.data.setdefault("price_history", [])
     self.data.setdefault("bp_history", [])
-    self.data.setdefault('ema_short', [])
-    self.data.setdefault('ema_long', [])
+    self.data.setdefault("bp_slope_history", [])
     self.data.setdefault('max_bids', [])
     self.data.setdefault('min_asks', [])
+    self.data.setdefault('index_price_history', [])
+    self.data.setdefault('dolphin_p_flux', [])
+    self.data.setdefault('dolphin_p_flux_positive', False)
+    self.data.setdefault('in_trade', False)
+    self.data.setdefault('length_of_trade', 0)
 
-    self.data["price_history"].append(getMidPrice(self, state))
-    add_EMA(self, state, 9.0, self.data['ema_short'])
-    add_EMA(self, state, 96.0, self.data['ema_long'])
+    #PARAMS
+    BASE_PRICE_SLOPE_LOOKBACK = 120
+    BASE_PRICE_SLOPE_EXIT_THRESHOLD = 0.00001
+    PFLUX_THRESHOLD = 5.0
+    #ENDPARAMS
 
-    # used to calculate price trend in order to determine how to change spread
-    ema_crossover = self.data['ema_short'][-1] - self.data['ema_long'][-1]
-
-    ema_slope = get_EMA_slope(self, state, 12)
-
-    #print("cross_over:", cross_over)
-    #print("ema_slope:", ema_slope)
+    self.data["price_history"].append(getMidPrice(state, self.symbol))
+    self.data['index_price_history'].append(state.observations['DOLPHIN_SIGHTINGS'])
+    if len(self.data['index_price_history']) > 1:
+        self.data['dolphin_p_flux'].append(self.data['index_price_history'][-1] - self.data['index_price_history'][-2])
+    else:
+        self.data['dolphin_p_flux'].append(0)
 
     if self.symbol not in state.position:
         state.position[self.symbol] = 0
 
-    #print("current position:", state.position[self.symbol])
-
-    max_buy = self.maxNewPosition(state.position[self.symbol], True)
-    max_sell = self.maxNewPosition(state.position[self.symbol], False)
-
     max_bid = max(state.order_depths[self.symbol].buy_orders)
     min_ask = min(state.order_depths[self.symbol].sell_orders)
 
-    base_price = int(round((getFairPrice(self, state, max_bid, min_ask, 7)), 0))
-    base_price_raw = getFairPrice(self, state, max_bid, min_ask, 7)
-    self.data['bp_history'].append(base_price_raw)
-
-    offset_diving_gear_distribution = {price + base_price: diving_gear_distribution[price] for price in diving_gear_distribution}
-
-    buy_orders = distributeValue(max_buy, {price: offset_diving_gear_distribution[price] for price in range(base_price-1, base_price-2, -1)})
-    sell_orders = distributeValue(abs(max_sell), {price: offset_diving_gear_distribution[price] for price in range(base_price+1, base_price+2)})
-    sell_orders = {price: -sell_orders[price] for price in sell_orders}
-        
-    sell_order_prices = [price for price in sell_orders]
-    buy_order_prices = [price for price in buy_orders]
-
-    buy_order_volumes = [buy_orders[price] for price in buy_orders]
-    sell_order_volumes = [sell_orders[price] for price in sell_orders]
-
-    #if abs(ema_slope) > 0:
-        #print("changing spread")
-    #    change_Spread(self, state, ema_crossover, buy_order_prices, sell_order_prices)
-        #^^^change the spread to directionally bet based on an indicator
-
-    buy_orders = {price: buy_order_volumes[i] for i, price in enumerate(buy_order_prices)}
-    sell_orders = {price: sell_order_volumes[i] for i, price in enumerate(sell_order_prices)}
-
-    SLOPE_LOOKBACK = 3
-    SLOPE_THRESHOLD = 1.5
-    slope = 0
-        
-    if len(self.data['bp_history']) > SLOPE_LOOKBACK:
-        slope = (self.data['bp_history'][-1] - self.data['bp_history'][-SLOPE_LOOKBACK])
-        
-    ask_offset = 0
-    bid_offset = 0
-    # ask_offset = abs(slope(2)) + 1
-    # bid_offset = -abs(slope(2)) - 1
-
-    lim = 0
-    if len(self.data['price_history']) < SLOPE_LOOKBACK:
-        lim = len(self.data['price_history'])
+    base_price_for_slope = getFairPrice(self, state, max_bid, min_ask, BASE_PRICE_SLOPE_LOOKBACK)
+    self.data['bp_history'].append(base_price_for_slope)
+    if len(self.data['bp_history']) < BASE_PRICE_SLOPE_LOOKBACK:
+        self.data['bp_slope_history'].append(0)
     else:
-        lim = SLOPE_LOOKBACK
+        self.data['bp_slope_history'].append(self.data['bp_history'][-1]/self.data['bp_history'][-BASE_PRICE_SLOPE_LOOKBACK] - 1)
 
-    temp_data = self.data['price_history'][-lim:]
-    avg = 0
-    for x in range(0, len(temp_data)-1):
-        avg += abs(temp_data[x]-temp_data[x+1])
+    if abs(self.data['dolphin_p_flux'][-1]) > PFLUX_THRESHOLD and not self.data['in_trade']:
+        self.data['in_trade'] = True
+        if self.data['dolphin_p_flux'][-1] > 0:
+            self.data['dolphin_p_flux_positive'] = True
+        else:
+            self.data['dolphin_p_flux_positive'] = False
+        self.data['length_of_trade'] = 0
 
-    avg /= lim
-    slope = avg
-    # vol = statistics.stdev(self.data['mp'][-lim:])*math.sqrt(lim)
-    
-    if slope > SLOPE_THRESHOLD:
-        ask_offset = 0
-    elif slope < -SLOPE_THRESHOLD:
-        bid_offset = 0
+    elif self.data['in_trade'] and self.data['length_of_trade'] > BASE_PRICE_SLOPE_LOOKBACK and \
+        (abs(self.data['bp_slope_history'][-1]) < BASE_PRICE_SLOPE_EXIT_THRESHOLD or \
+        (self.data['dolphin_p_flux_positive'] and self.data['bp_slope_history'][-1] < 0) or \
+        (not self.data['dolphin_p_flux_positive'] and self.data['bp_slope_history'][-1] > 0)):
 
-    highest_bid = max(state.order_depths[self.symbol].buy_orders.keys()) 
-    lowest_ask = min(state.order_depths[self.symbol].sell_orders.keys())
+        self.data['in_trade'] = False
+        self.data['length_of_trade'] = 0
 
-    our_highest_bid = max(buy_orders.keys()) + bid_offset
-    our_lowest_ask = min(sell_orders.keys()) + ask_offset
-    
+    best_ask = min(state.order_depths[self.symbol].sell_orders) if len(state.order_depths[self.symbol].sell_orders) > 0 else None
+    best_bid = max(state.order_depths[self.symbol].buy_orders) if len(state.order_depths[self.symbol].buy_orders) > 0 else None
 
-    # print(str(highest_bid) + " " + str(lowest_ask) + " " + str(our_lowest_ask) + " " + str(our_highest_bid) + " " + str(base_price) + " " + str(slope))
-    print(base_price)
-    
-    for price in buy_orders:
-        if buy_orders[price] > 0:
-            self.addLimitOrder(state.position[self.symbol], True, buy_orders[price], price + bid_offset)
-    for price in sell_orders:
-        if sell_orders[price] < 0:
-            self.addLimitOrder(state.position[self.symbol], False, sell_orders[price], price + ask_offset)
+    if self.data['in_trade'] and self.data['dolphin_p_flux_positive']:
+        self.data['length_of_trade'] += 1
+        self.addLimitOrder(state.position[self.symbol], True, 999999, best_ask)
+    elif self.data['in_trade'] and not self.data['dolphin_p_flux_positive']:
+        self.data['length_of_trade'] += 1
+        self.addLimitOrder(state.position[self.symbol], False, 999999, best_bid)
 
-def add_MACD(self: Strategy, state: TradingState, L: float, MACD: list[float], MACD_signal: list[float]):
-    '''
-    Function returns the current MACD and MACD_signal
-    MACD = EMA_short - EMA_long
-    MACD_signal = e^(-L) * MACD_signal + (1 - e^(-L)) * MACD
-    '''
-    L_use = (1.0/L)
-    MACD.append(self.data['ema_short'][-1] - self.data['ema_long'][-1])
-    if len(MACD_signal) == 0:
-        MACD_signal.append(MACD[-1])
     else:
-        MACD_signal.append(math.exp(-L_use)*MACD_signal[-1] + (1-math.exp(-L_use))*MACD[-1])
-
-def getMidPriceTS(state: TradingState, symbol: Symbol) -> float:
-    Order_Depth = state.order_depths[symbol]
-    Buy_Orders = Order_Depth.buy_orders
-    max_bid = -1
-    for key in Buy_Orders:
-        if key > max_bid:
-            max_bid = key
-
-    min_ask = -1
-    Sell_Orders = Order_Depth.sell_orders
-    for key in Sell_Orders:
-        if min_ask < 0:
-            min_ask = key
-            continue
-
-        if key < min_ask:
-            min_ask = key
-
-    return float(max_bid + min_ask) / 2.0
-
+        if state.position[self.symbol] > 0:
+            self.addLimitOrder(state.position[self.symbol], False, state.position[self.symbol], best_bid)
+        else:
+            self.addLimitOrder(state.position[self.symbol], True, state.position[self.symbol], best_ask)
 
 # Strategies to run
 strategies: List[Strategy] = [

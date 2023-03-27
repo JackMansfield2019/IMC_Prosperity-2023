@@ -29,6 +29,8 @@ PARAM_LIMITS = {
     "BUY_QUANTITY": (1, 10),
 }
 
+NUM_SUBMISSIONS = 50
+
 def blast_submission(strategy_path: str, strategy_name: str, auth_token: str, num_submissions: int, param_limits: Dict[str, Tuple[Any, Any]]) -> bool:
     # duplicate the strategy file to be able to change the params
     with open(strategy_path, "r") as f:
@@ -94,35 +96,35 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if sys.argv[1] == "blast_submission":
-        # modify the number of submissions you want to upload here        v
-        assert(blast_submission(STRATEGY_PATH, STRATEGY_NAME, AUTH_TOKEN, 1, PARAM_LIMITS))
+        assert(blast_submission(STRATEGY_PATH, STRATEGY_NAME, AUTH_TOKEN, NUM_SUBMISSIONS, PARAM_LIMITS))
     elif sys.argv[1] == "save_results":
         submissions = download_algorithms(AUTH_TOKEN, ROUND_TO_DOWNLOAD)
         submissions = sort_submissions_by_profit(submissions)
 
         with open("Results.txt", "w") as f:
             for i, submission in enumerate(submissions):
-                f.write(str(submission) + "\n")
-                performance = submission.fetch_performance(AUTH_TOKEN)
-                f.write("Profit/Loss: " + (str(performance[-1][1]) if len(performance) > 0 else "Unknown") + "\n")
-                # search through submission.file_content for the params
-                # write the params to the file
-                params: Dict[str, Any] = {}
-                params_started = False
-                for line in submission.file_content.splitlines():
-                    if "#PARAMS" in line:
-                        params_started = True
-                        continue
-                    if params_started:
-                        if "#ENDPARAMS" in line:
-                            break
-                        for param in PARAM_LIMITS:
-                            if param in line:
-                                if line.find(" = ") == -1:
-                                    raise Exception("Param not formatted correctly, should be PARAM = value")
-                                params[param] = line[line.find(" = ") + 3:]
+                if submission.file_name == STRATEGY_NAME.replace(".py", "_Copy.py"):
+                    f.write(str(submission) + "\n")
+                    performance = submission.fetch_performance(AUTH_TOKEN)
+                    f.write("Profit/Loss: " + (str(performance[-1][1]) if len(performance) > 0 else "Unknown") + "\n")
+                    # search through submission.file_content for the params
+                    # write the params to the file
+                    params: Dict[str, Any] = {}
+                    params_started = False
+                    for line in submission.file_content.splitlines():
+                        if "#PARAMS" in line:
+                            params_started = True
+                            continue
+                        if params_started:
+                            if "#ENDPARAMS" in line:
                                 break
-                params_json = json.dumps(params, indent=4)
-                f.write("Params:\n")
-                f.write(params_json)
-                f.write("\n\n")
+                            for param in PARAM_LIMITS:
+                                if param in line:
+                                    if line.find(" = ") == -1:
+                                        raise Exception("Param not formatted correctly, should be PARAM = value")
+                                    params[param] = line[line.find(" = ") + 3:]
+                                    break
+                    params_json = json.dumps(params, indent=4)
+                    f.write("Params:\n")
+                    f.write(params_json)
+                    f.write("\n\n")
