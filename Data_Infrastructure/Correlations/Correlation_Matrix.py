@@ -15,10 +15,9 @@ for idx in range(0, len(df.axes[0])):
     # print progress
     if idx % 10000 == 0:
         print("Progress: " + str(idx) + "/" + str(len(df.axes[0])))
-    for product in df_aug.columns:
-        column_index: int = df_aug.columns.get_loc(product)
-        if product == df['product'][idx]:
-            df_aug.loc[df_aug[df_aug.columns[column_index]].count(), product] = df['mid_price'][idx]
+    
+    column_index = df_aug.columns.get_loc(df['product'][idx])
+    df_aug.loc[df_aug[df_aug.columns[column_index]].count(), df['product'][idx]] = df['mid_price'][idx]
 
 
 # Add an index for the calculation of the PICNIC index
