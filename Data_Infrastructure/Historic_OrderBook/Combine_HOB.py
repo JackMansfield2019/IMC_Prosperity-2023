@@ -1,5 +1,6 @@
 import csv
 
+#Meaningless comment
 with open('prices_round_1_day_-2.csv', mode='r') as csv_file:
     spamreader = csv.reader(csv_file, delimiter=' ', quotechar='|')
     rounds = []
